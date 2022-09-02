@@ -1,5 +1,0 @@
-#LIMA-START
-{{- range $key, $val := .Env}}
-{{$key}}={{$val}}
-{{- end}}
-#LIMA-END
