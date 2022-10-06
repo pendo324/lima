@@ -134,6 +134,29 @@ func Start(ctx context.Context, inst *store.Instance) error {
 	if nerdctlArchiveCache != "" {
 		args = append(args, "--nerdctl-archive", nerdctlArchiveCache)
 	}
+	if y.ExtraArchive != nil {
+		if y.ExtraArchive.Digest.String() != "" {
+			if !y.ExtraArchive.Digest.Algorithm().Available() {
+				return fmt.Errorf("expected digest algorithm %q is not available", y.ExtraArchive.Digest.Algorithm())
+			}
+			if err := y.ExtraArchive.Digest.Validate(); err != nil {
+				return err
+			}
+			eaBuf, err := os.ReadFile(y.ExtraArchive.Location)
+			if err != nil {
+				return err
+			}
+			verifier := y.ExtraArchive.Digest.Verifier()
+			if _, err := verifier.Write(eaBuf); err != nil {
+				return err
+			}
+			if !verifier.Verified() {
+				return errors.New("digest mismatch between supplied digest and calculated digest for extra archive")
+			}
+		}
+
+		args = append(args, "--extra-archive", y.ExtraArchive.Location)
+	}
 	args = append(args, inst.Name)
 	haCmd := exec.CommandContext(ctx, self, args...)
 

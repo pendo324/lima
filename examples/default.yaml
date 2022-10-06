@@ -214,6 +214,13 @@ containerd:
 #     vim was not installed in the guest. Make sure the package system is working correctly.
 #     Also see "/var/log/cloud-init-output.log" in the guest.
 
+# Adds an additional archive to the CIDATA image which is mounted on boot
+# Useful for provisioning scripts that run before mounts
+# extraArchive: 
+#   location: "~/extra.tar.gz"
+#   arch: "x86_64"
+#   digest: "sha256:..."
+
 # ===================================================================== #
 # FURTHER ADVANCED CONFIGURATION
 # ===================================================================== #
