@@ -12,6 +12,8 @@ type Driver interface {
 
 	CreateDisk() error
 
+	InspectDisk(diskName string) (*store.Disk, error)
+
 	Start(_ context.Context) (chan error, error)
 
 	Stop(_ context.Context) error
@@ -34,6 +36,14 @@ func (d *BaseDriver) Validate() error {
 
 func (d *BaseDriver) CreateDisk() error {
 	return nil
+}
+
+func (d *BaseDriver) InspectDisk(diskName string) (*store.Disk, error) {
+	disk, err := store.InspectDisk(diskName)
+	if err != nil {
+		return nil, err
+	}
+	return disk, nil
 }
 
 func (d *BaseDriver) Start(_ context.Context) (chan error, error) {

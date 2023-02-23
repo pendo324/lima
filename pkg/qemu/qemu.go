@@ -111,7 +111,7 @@ func CreateDataDisk(dir string, size int) error {
 		return err
 	}
 
-	args := []string{"create", "-f", "qcow2", dataDisk, strconv.Itoa(size)}
+	args := []string{"create", "-f", "raw", dataDisk, strconv.Itoa(size)}
 	cmd := exec.Command("qemu-img", args...)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to run %v: %q: %w", cmd.Args, string(out), err)

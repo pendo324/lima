@@ -334,6 +334,37 @@ func attachDisks(driver *driver.BaseDriver, vmConfig *vz.VirtualMachineConfigura
 	}
 	configurations = append(configurations, diffDisk)
 
+	if len(driver.Yaml.AdditionalDisks) > 0 {
+		for _, diskName := range driver.Yaml.AdditionalDisks {
+			d, err := driver.InspectDisk(diskName)
+			if err != nil {
+				logrus.Errorf("could not load disk %q: %q", diskName, err)
+				return err
+			}
+
+			if d.Instance != "" {
+				logrus.Errorf("could not attach disk %q, in use by instance %q", diskName, d.Instance)
+				return err
+			}
+			logrus.Infof("Mounting disk %q on %q", diskName, d.MountPoint)
+			err = d.Lock(driver.Instance.Dir)
+			if err != nil {
+				logrus.Errorf("could not lock disk %q: %q", diskName, err)
+				return err
+			}
+			extraDiskPath := filepath.Join(d.Dir, filenames.DataDisk)
+			if err = validateDiskFormat(extraDiskPath); err != nil {
+				return err
+			}
+			extraDiskPathAttachment, err := vz.NewDiskImageStorageDeviceAttachmentWithCacheAndSync(extraDiskPath, false, vz.DiskImageCachingModeAutomatic, vz.DiskImageSynchronizationModeFsync)
+			if err != nil {
+				return err
+			}
+			extraDisk, err := vz.NewVirtioBlockDeviceConfiguration(extraDiskPathAttachment)
+			configurations = append(configurations, extraDisk)
+		}
+	}
+
 	if err = validateDiskFormat(ciDataPath); err != nil {
 		return err
 	}

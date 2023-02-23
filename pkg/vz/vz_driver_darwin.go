@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/lima-vm/lima/pkg/reflectutil"
+	"github.com/lima-vm/lima/pkg/store"
 
 	"github.com/Code-Hex/vz/v3"
 
@@ -104,6 +105,15 @@ func (l *LimaVzDriver) CreateDisk() error {
 	}
 
 	return nil
+}
+
+func (l *LimaVzDriver) InspectDisk(diskName string) (*store.Disk, error) {
+	disk, err := l.BaseDriver.InspectDisk(diskName)
+	if err != nil {
+		return nil, err
+	}
+
+	return disk, nil
 }
 
 func (l *LimaVzDriver) Start(ctx context.Context) (chan error, error) {
