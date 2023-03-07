@@ -21,6 +21,7 @@ import (
 	"github.com/lima-vm/lima/pkg/localpathutil"
 	"github.com/lima-vm/lima/pkg/networks"
 	"github.com/lima-vm/lima/pkg/qemu/imgutil"
+	"github.com/lima-vm/lima/pkg/store"
 	"github.com/lima-vm/lima/pkg/store/filenames"
 	"github.com/sirupsen/logrus"
 )
@@ -334,35 +335,51 @@ func attachDisks(driver *driver.BaseDriver, vmConfig *vz.VirtualMachineConfigura
 	}
 	configurations = append(configurations, diffDisk)
 
-	if len(driver.Yaml.AdditionalDisks) > 0 {
-		for _, diskName := range driver.Yaml.AdditionalDisks {
-			d, err := driver.InspectDisk(diskName)
-			if err != nil {
-				logrus.Errorf("could not load disk %q: %q", diskName, err)
-				return err
-			}
-
-			if d.Instance != "" {
-				logrus.Errorf("could not attach disk %q, in use by instance %q", diskName, d.Instance)
-				return err
-			}
-			logrus.Infof("Mounting disk %q on %q", diskName, d.MountPoint)
-			err = d.Lock(driver.Instance.Dir)
-			if err != nil {
-				logrus.Errorf("could not lock disk %q: %q", diskName, err)
-				return err
-			}
-			extraDiskPath := filepath.Join(d.Dir, filenames.DataDisk)
-			if err = validateDiskFormat(extraDiskPath); err != nil {
-				return err
-			}
-			extraDiskPathAttachment, err := vz.NewDiskImageStorageDeviceAttachmentWithCacheAndSync(extraDiskPath, false, vz.DiskImageCachingModeAutomatic, vz.DiskImageSynchronizationModeFsync)
-			if err != nil {
-				return err
-			}
-			extraDisk, err := vz.NewVirtioBlockDeviceConfiguration(extraDiskPathAttachment)
-			configurations = append(configurations, extraDisk)
+	for _, diskName := range driver.Yaml.AdditionalDisks {
+		d, err := store.InspectDisk(diskName)
+		if err != nil {
+			return fmt.Errorf("failed to run load disk %q: %q", diskName, err)
 		}
+
+		if d.Instance != "" {
+			return fmt.Errorf("failed to run attach disk %q, in use by instance %q", diskName, d.Instance)
+		}
+		logrus.Infof("Mounting disk %q on %q", diskName, d.MountPoint)
+		err = d.Lock(driver.Instance.Dir)
+		if err != nil {
+			return fmt.Errorf("failed to run lock disk %q: %q", diskName, err)
+		}
+		extraDiskPath := filepath.Join(d.Dir, filenames.DataDisk)
+
+		extraDiskFormat, err := imgutil.DetectFormat(extraDiskPath)
+		if err != nil {
+			return fmt.Errorf("failed to run detect disk format %q: %q", diskName, err)
+		}
+		if extraDiskFormat != "raw" {
+			rawPath := fmt.Sprintf("%s.raw", extraDiskPath)
+			if err = imgutil.QCOWToRaw(extraDiskPath, rawPath); err != nil {
+				return fmt.Errorf("failed to convert qcow2 disk %q to raw for vz driver: %w", diskName, err)
+			}
+			if err = os.Rename(extraDiskPath, fmt.Sprintf("%s.qcow2", extraDiskPath)); err != nil {
+				return fmt.Errorf("failed to rename additional disk for vz driver: %w", err)
+			}
+			if err = os.Rename(rawPath, extraDiskPath); err != nil {
+				return fmt.Errorf("failed to rename additional disk for vz driver: %w", err)
+			}
+		}
+
+		if err = validateDiskFormat(extraDiskPath); err != nil {
+			return fmt.Errorf("failed to validate extra disk %q: %w", extraDiskPath, err)
+		}
+		extraDiskPathAttachment, err := vz.NewDiskImageStorageDeviceAttachmentWithCacheAndSync(extraDiskPath, false, vz.DiskImageCachingModeAutomatic, vz.DiskImageSynchronizationModeFsync)
+		if err != nil {
+			return fmt.Errorf("failed to create disk attachment for extra disk %q: %w", extraDiskPath, err)
+		}
+		extraDisk, err := vz.NewVirtioBlockDeviceConfiguration(extraDiskPathAttachment)
+		if err != nil {
+			return fmt.Errorf("failed to create new virtio block device config for extra disk %q: %w", extraDiskPath, err)
+		}
+		configurations = append(configurations, extraDisk)
 	}
 
 	if err = validateDiskFormat(ciDataPath); err != nil {
