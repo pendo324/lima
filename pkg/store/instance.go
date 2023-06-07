@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -27,10 +29,11 @@ import (
 type Status = string
 
 const (
-	StatusUnknown Status = ""
-	StatusBroken  Status = "Broken"
-	StatusStopped Status = "Stopped"
-	StatusRunning Status = "Running"
+	StatusUnknown       Status = ""
+	StatusUnititialized Status = "Unititialized"
+	StatusBroken        Status = "Broken"
+	StatusStopped       Status = "Stopped"
+	StatusRunning       Status = "Running"
 )
 
 type Instance struct {
@@ -52,6 +55,7 @@ type Instance struct {
 	DriverPID       int                `json:"driverPID,omitempty"`
 	Errors          []error            `json:"errors,omitempty"`
 	Config          *limayaml.LimaYAML `json:"config,omitempty"`
+	RootFsPath      string             `json:"rootfs,omitempty"`
 }
 
 func (inst *Instance) LoadYAML() (*limayaml.LimaYAML, error) {
@@ -89,6 +93,14 @@ func Inspect(instName string) (*Instance, error) {
 	inst.Arch = *y.Arch
 	inst.VMType = *y.VMType
 	inst.CPUType = y.CPUType[*y.Arch]
+
+	if inst.VMType == limayaml.WSL {
+		status, err := GetWslStatus(instName)
+		inst.Errors = append(inst.Errors, err)
+		inst.Status = status
+
+		return inst, nil
+	}
 
 	inst.CPUs = *y.CPUs
 	memory, err := units.RAMInBytes(*y.Memory)
@@ -374,4 +386,42 @@ func PrintInstances(w io.Writer, instances []*Instance, format string, options *
 		fmt.Fprintln(w)
 	}
 	return nil
+}
+
+func GetWslStatus(instName string) (string, error) {
+	// Expected output (whitespace preserved):
+	// PS > wsl --list --verbose
+	//   NAME      STATE           VERSION
+	// * Ubuntu    Stopped         2
+	cmd := exec.Command("wsl.exe", "--list", "--verbose")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to read instance state for instance %s, try running `wsl --list --verbose` to debug, err: %w", instName, err)
+	}
+
+	outString := string(out)
+	if len(outString) == 0 {
+		return StatusBroken, fmt.Errorf("failed to read instance state for instance %s, try running `wsl --list --verbose` to debug, err: %w", instName, err)
+	}
+
+	var instState string
+	// wsl --list --verbose may have differernt headers depending on localization, just split by line
+	for _, rows := range strings.Split(strings.ReplaceAll(string(out), "\r\n", "\n"), "\n") {
+		cols := regexp.MustCompile(`\s+`).Split(strings.TrimSpace(rows), -1)
+		nameIdx := 0
+		// '*' indicates default instance
+		if cols[0] == "*" {
+			nameIdx = 1
+		}
+		if cols[nameIdx] == "lima-"+instName {
+			instState = cols[nameIdx+1]
+			break
+		}
+	}
+
+	if instState == "" {
+		return StatusUnititialized, nil
+	}
+
+	return instState, nil
 }

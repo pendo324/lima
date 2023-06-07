@@ -51,6 +51,8 @@ func Validate(y LimaYAML, warn bool) error {
 	switch *y.VMType {
 	case QEMU:
 		// NOP
+	case WSL:
+		// NOP
 	case VZ:
 		if !IsNativeArch(*y.Arch) {
 			return fmt.Errorf("field `arch` must be %q for VZ; got %q", NewArch(runtime.GOARCH), *y.Arch)

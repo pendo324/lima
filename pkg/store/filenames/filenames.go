@@ -52,6 +52,8 @@ const (
 	HostAgentStderrLog = "ha.stderr.log"
 	VzIdentifier       = "vz-identifier"
 	VzEfi              = "vz-efi"
+	WslRootFs          = "wsl-rootfs"
+	WslRootFsDir       = "wsl-root"
 
 	// SocketDir is the default location for forwarded sockets with a relative paths in HostSocket
 	SocketDir = "sock"
