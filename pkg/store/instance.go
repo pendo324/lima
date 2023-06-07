@@ -96,7 +96,10 @@ func Inspect(instName string) (*Instance, error) {
 
 	if inst.VMType == limayaml.WSL {
 		status, err := GetWslStatus(instName)
-		inst.Errors = append(inst.Errors, err)
+		if err != nil {
+			inst.Status = StatusBroken
+			inst.Errors = append(inst.Errors, err)
+		}
 		inst.Status = status
 
 		return inst, nil
