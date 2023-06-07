@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/lima-vm/lima/pkg/store/filenames"
+	"github.com/sirupsen/logrus"
 )
 
 func wslCommand(args ...string) (string, error) {
@@ -30,6 +31,7 @@ func startVM(name string) error {
 
 // initVM calls WSL to import a new VM specifically for Lima.
 func initVM(name, instanceDir string) error {
+	logrus.Infof("Importing distro from %q to %q", path.Join(instanceDir, filenames.WslRootFsDir), path.Join(instanceDir, filenames.WslRootFs))
 	_, err := wslCommand("--import", "lima-"+name, path.Join(instanceDir, filenames.WslRootFsDir), path.Join(instanceDir, filenames.WslRootFs))
 	if err != nil {
 		return err

@@ -8,6 +8,7 @@ import (
 	"github.com/lima-vm/lima/pkg/driver"
 	"github.com/lima-vm/lima/pkg/fileutils"
 	"github.com/lima-vm/lima/pkg/store/filenames"
+	"github.com/sirupsen/logrus"
 )
 
 // EnsureFs downloads the root fs.
@@ -28,6 +29,7 @@ func EnsureFs(driver *driver.BaseDriver) error {
 			return fileutils.Errors(errs)
 		}
 	}
+	logrus.Info("Download succeeded")
 
 	return nil
 }

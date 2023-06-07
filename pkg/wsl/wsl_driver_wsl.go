@@ -120,7 +120,7 @@ func (l *LimaWslDriver) CreateDisk() error {
 
 func (l *LimaWslDriver) Start(ctx context.Context) (chan error, error) {
 	logrus.Infof("Starting WSL VM")
-	status, err := store.GetWslStatus("lima-" + l.Instance.Name)
+	status, err := store.GetWslStatus(l.Instance.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -128,13 +128,13 @@ func (l *LimaWslDriver) Start(ctx context.Context) (chan error, error) {
 	err = nil
 
 	if status == store.StatusStopped {
-		err = startVM("lima-" + l.Instance.Name)
+		err = startVM(l.Instance.Name)
 	} else if status == store.StatusUnititialized {
 		err = EnsureFs(l.BaseDriver)
 		if err != nil {
 			return nil, err
 		}
-		err = initVM("lima-"+l.Instance.Name, l.Instance.Dir)
+		err = initVM(l.Instance.Name, l.Instance.Dir)
 	}
 
 	if err != nil {
@@ -161,5 +161,5 @@ func (l *LimaWslDriver) RunGUI() error {
 func (l *LimaWslDriver) Stop(_ context.Context) error {
 	logrus.Info("Shutting down WSL2 VM")
 
-	return stopVM("lima-" + l.Instance.Name)
+	return stopVM(l.Instance.Name)
 }
