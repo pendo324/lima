@@ -8,6 +8,8 @@ import (
 
 	"github.com/lima-vm/lima/pkg/store/filenames"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/text/encoding/unicode"
+	"golang.org/x/text/transform"
 )
 
 func wslCommand(args ...string) (string, error) {
@@ -16,7 +18,11 @@ func wslCommand(args ...string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return string(out), nil
+	decoded, _, err := transform.Bytes(unicode.UTF16(unicode.LittleEndian, unicode.UseBOM).NewDecoder(), out)
+	if err != nil {
+		return "", fmt.Errorf("failed to convert output from UTF16 when running wsl command wsl.exe %v, err: %w", args, err)
+	}
+	return string(decoded), nil
 }
 
 // startVM calls WSL to start a VM.

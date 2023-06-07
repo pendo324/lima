@@ -24,6 +24,8 @@ import (
 	"github.com/lima-vm/lima/pkg/store/dirnames"
 	"github.com/lima-vm/lima/pkg/store/filenames"
 	"github.com/lima-vm/lima/pkg/textutil"
+	"golang.org/x/text/encoding/unicode"
+	"golang.org/x/text/transform"
 )
 
 type Status = string
@@ -409,7 +411,13 @@ func GetWslStatus(instName string) (string, error) {
 
 	var instState string
 	// wsl --list --verbose may have differernt headers depending on localization, just split by line
-	for _, rows := range strings.Split(strings.ReplaceAll(string(out), "\r\n", "\n"), "\n") {
+	// Windows uses little endian by default, use unicode.UseBOM policy to retrieve BOM from the text,
+	// and unicode.LittleEndian as a fallback
+	decoded, _, err := transform.Bytes(unicode.UTF16(unicode.LittleEndian, unicode.UseBOM).NewDecoder(), out)
+	if err != nil {
+		return "", fmt.Errorf("failed to convert output from UTF16 for instance state for instance %s, err: %w", instName, err)
+	}
+	for _, rows := range strings.Split(strings.ReplaceAll(string(decoded), "\r\n", "\n"), "\n") {
 		cols := regexp.MustCompile(`\s+`).Split(strings.TrimSpace(rows), -1)
 		nameIdx := 0
 		// '*' indicates default instance
