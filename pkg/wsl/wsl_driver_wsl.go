@@ -3,7 +3,7 @@ package wsl
 import (
 	"context"
 	"fmt"
-	"strings"
+	"regexp"
 
 	"github.com/lima-vm/lima/pkg/driver"
 	"github.com/lima-vm/lima/pkg/limayaml"
@@ -78,7 +78,8 @@ func (l *LimaWslDriver) Validate() error {
 			logrus.Warnf("Ignoring: vmType %s: images[%d]: %+v", *l.Yaml.VMType, i, unknown)
 		}
 		// TODO: real filetype checks
-		if image.Arch == *l.Yaml.Arch && (!strings.HasSuffix(image.Location, "tar.")) {
+		match, _ := regexp.MatchString(`.*tar\.*`, image.Location)
+		if image.Arch == *l.Yaml.Arch && !match {
 			return fmt.Errorf("unsupported image type for vmType: %s, tarball root file system required: %q", *l.Yaml.VMType, image.Location)
 		}
 	}
