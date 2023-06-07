@@ -26,8 +26,8 @@ func New(driver *driver.BaseDriver) *LimaWslDriver {
 
 func (l *LimaWslDriver) Validate() error {
 	// TODO: add new mount type for WSL2 since this is handled by WSL2 automatically and no other mount type should be used.
-	if *l.Yaml.MountType != "wsl" {
-		return fmt.Errorf("field `mountType` must be %q for WSL2 driver, got %q", "wsl", *l.Yaml.MountType)
+	if *l.Yaml.MountType != limayaml.WSLMount {
+		return fmt.Errorf("field `mountType` must be %q for WSL2 driver, got %q", limayaml.WSLMount, *l.Yaml.MountType)
 	}
 	if *l.Yaml.Firmware.LegacyBIOS {
 		return fmt.Errorf("`firmware.legacyBIOS` configuration is not supported for WSL2 driver")
