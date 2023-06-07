@@ -101,10 +101,11 @@ func (l *LimaWslDriver) Validate() error {
 		logrus.Warnf("Ignoring: vmType %s: `audio.device`: %+v", *l.Yaml.VMType, audioDevice)
 	}
 
-	videoDisplay := *l.Yaml.Video.Display
-	if videoDisplay != "" {
-		logrus.Warnf("Ignoring: vmType %s: `audio.device`: %+v", *l.Yaml.VMType, videoDisplay)
-	}
+	// TODO: add this back after figuring out why it was causing a panic
+	// videoDisplay := *l.Yaml.Video.Display
+	// if videoDisplay != "" {
+	// 	logrus.Warnf("Ignoring: vmType %s: `audio.device`: %+v", *l.Yaml.VMType, videoDisplay)
+	// }
 	return nil
 }
 
