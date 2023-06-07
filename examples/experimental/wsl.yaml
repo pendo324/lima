@@ -19,3 +19,5 @@ images:
 - location: "https://github.com/fedora-cloud/docker-brew-fedora/raw/38/x86_64/fedora-38-x86_64.tar.xz"
   arch: "x86_64"
   digest: "sha256:d31a6872886b148ba9207b8b2e7c9981e6b27c950ec96048e19626eee09d0529"
+
+mountType: wsl
