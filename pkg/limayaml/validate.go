@@ -156,7 +156,7 @@ func Validate(y LimaYAML, warn bool) error {
 	}
 
 	switch *y.MountType {
-	case REVSSHFS, NINEP, VIRTIOFS:
+	case REVSSHFS, NINEP, VIRTIOFS, WSLMount:
 	default:
 		return fmt.Errorf("field `mountType` must be %q or %q or %q, got %q", REVSSHFS, NINEP, VIRTIOFS, *y.MountType)
 	}
