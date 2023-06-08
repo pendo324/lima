@@ -125,17 +125,18 @@ func (l *LimaWslDriver) Start(ctx context.Context) (chan error, error) {
 		return nil, err
 	}
 
-	err = nil
-
-	if status == store.StatusStopped {
-		err = startVM(l.Instance.Name)
-	} else if status == store.StatusUnititialized {
+	if status == store.StatusUnititialized {
 		err = EnsureFs(l.BaseDriver)
 		if err != nil {
 			return nil, err
 		}
 		err = initVM(l.Instance.Name, l.Instance.Dir)
+		if err != nil {
+			return nil, err
+		}
 	}
+
+	err = startVM(l.Instance.Name)
 
 	if err != nil {
 		return nil, err
