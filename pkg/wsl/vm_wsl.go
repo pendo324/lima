@@ -17,6 +17,9 @@ func wslCommand(args ...string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if err := cmd.Start(); err != nil {
+		return "", err
+	}
 	outString, err := ioutilx.FromUTF16leToString(out)
 	if err != nil {
 		return "", fmt.Errorf("failed to convert output from UTF16 when running wsl command wsl.exe %v, err: %w", args, err)

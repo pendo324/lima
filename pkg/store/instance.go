@@ -406,6 +406,10 @@ func GetWslStatus(instName, distroName string) (string, error) {
 		return "", fmt.Errorf("failed to read instance state for instance %s, try running `wsl --list --verbose` to debug, err: %w", instName, err)
 	}
 
+	if err := cmd.Start(); err != nil {
+		return "", fmt.Errorf("failed to read instance state for instance %s, try running `wsl --list --verbose` to debug, err: %w", instName, err)
+	}
+
 	outString, err := ioutilx.FromUTF16leToString(out)
 	if err != nil {
 		return "", fmt.Errorf("failed to convert output from UTF16 for instance state for instance %s, err: %w", instName, err)
