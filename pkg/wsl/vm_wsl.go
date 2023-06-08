@@ -6,23 +6,22 @@ import (
 	"path"
 	"strconv"
 
+	"github.com/lima-vm/lima/pkg/ioutilx"
 	"github.com/lima-vm/lima/pkg/store/filenames"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/text/encoding/unicode"
-	"golang.org/x/text/transform"
 )
 
 func wslCommand(args ...string) (string, error) {
 	cmd := exec.Command("wsl.exe", args...)
-	out, err := cmd.CombinedOutput()
+	out, err := cmd.StdoutPipe()
 	if err != nil {
 		return "", err
 	}
-	decoded, _, err := transform.Bytes(unicode.UTF16(unicode.LittleEndian, unicode.UseBOM).NewDecoder(), out)
+	outString, err := ioutilx.FromUTF16leToString(out)
 	if err != nil {
 		return "", fmt.Errorf("failed to convert output from UTF16 when running wsl command wsl.exe %v, err: %w", args, err)
 	}
-	return string(decoded), nil
+	return outString, nil
 }
 
 // startVM calls WSL to start a VM.

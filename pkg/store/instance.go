@@ -20,12 +20,11 @@ import (
 
 	"github.com/docker/go-units"
 	hostagentclient "github.com/lima-vm/lima/pkg/hostagent/api/client"
+	"github.com/lima-vm/lima/pkg/ioutilx"
 	"github.com/lima-vm/lima/pkg/limayaml"
 	"github.com/lima-vm/lima/pkg/store/dirnames"
 	"github.com/lima-vm/lima/pkg/store/filenames"
 	"github.com/lima-vm/lima/pkg/textutil"
-	"golang.org/x/text/encoding/unicode"
-	"golang.org/x/text/transform"
 )
 
 type Status = string
@@ -33,6 +32,7 @@ type Status = string
 const (
 	StatusUnknown       Status = ""
 	StatusUnititialized Status = "Unititialized"
+	StatusInstalling    Status = "Installing"
 	StatusBroken        Status = "Broken"
 	StatusStopped       Status = "Stopped"
 	StatusRunning       Status = "Running"
@@ -58,6 +58,7 @@ type Instance struct {
 	Errors          []error            `json:"errors,omitempty"`
 	Config          *limayaml.LimaYAML `json:"config,omitempty"`
 	RootFsPath      string             `json:"rootfs,omitempty"`
+	DistroName      string             `json:"distroName,omitempty"`
 }
 
 func (inst *Instance) LoadYAML() (*limayaml.LimaYAML, error) {
@@ -97,7 +98,8 @@ func Inspect(instName string) (*Instance, error) {
 	inst.CPUType = y.CPUType[*y.Arch]
 
 	if inst.VMType == limayaml.WSL {
-		status, err := GetWslStatus(instName)
+		inst.DistroName = fmt.Sprintf("%s-%s", "lima", inst.Name)
+		status, err := GetWslStatus(instName, inst.DistroName)
 		if err != nil {
 			inst.Status = StatusBroken
 			inst.Errors = append(inst.Errors, err)
@@ -393,18 +395,21 @@ func PrintInstances(w io.Writer, instances []*Instance, format string, options *
 	return nil
 }
 
-func GetWslStatus(instName string) (string, error) {
+func GetWslStatus(instName, distroName string) (string, error) {
 	// Expected output (whitespace preserved):
 	// PS > wsl --list --verbose
 	//   NAME      STATE           VERSION
 	// * Ubuntu    Stopped         2
 	cmd := exec.Command("wsl.exe", "--list", "--verbose")
-	out, err := cmd.CombinedOutput()
+	out, err := cmd.StdoutPipe()
 	if err != nil {
 		return "", fmt.Errorf("failed to read instance state for instance %s, try running `wsl --list --verbose` to debug, err: %w", instName, err)
 	}
 
-	outString := string(out)
+	outString, err := ioutilx.FromUTF16leToString(out)
+	if err != nil {
+		return "", fmt.Errorf("failed to convert output from UTF16 for instance state for instance %s, err: %w", instName, err)
+	}
 	if len(outString) == 0 {
 		return StatusBroken, fmt.Errorf("failed to read instance state for instance %s, try running `wsl --list --verbose` to debug, err: %w", instName, err)
 	}
@@ -413,18 +418,14 @@ func GetWslStatus(instName string) (string, error) {
 	// wsl --list --verbose may have differernt headers depending on localization, just split by line
 	// Windows uses little endian by default, use unicode.UseBOM policy to retrieve BOM from the text,
 	// and unicode.LittleEndian as a fallback
-	decoded, _, err := transform.Bytes(unicode.UTF16(unicode.LittleEndian, unicode.UseBOM).NewDecoder(), out)
-	if err != nil {
-		return "", fmt.Errorf("failed to convert output from UTF16 for instance state for instance %s, err: %w", instName, err)
-	}
-	for _, rows := range strings.Split(strings.ReplaceAll(string(decoded), "\r\n", "\n"), "\n") {
+	for _, rows := range strings.Split(strings.ReplaceAll(string(outString), "\r\n", "\n"), "\n") {
 		cols := regexp.MustCompile(`\s+`).Split(strings.TrimSpace(rows), -1)
 		nameIdx := 0
 		// '*' indicates default instance
 		if cols[0] == "*" {
 			nameIdx = 1
 		}
-		if cols[nameIdx] == "lima-"+instName {
+		if cols[nameIdx] == distroName {
 			instState = cols[nameIdx+1]
 			break
 		}

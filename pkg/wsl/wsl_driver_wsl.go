@@ -120,7 +120,7 @@ func (l *LimaWslDriver) CreateDisk() error {
 
 func (l *LimaWslDriver) Start(ctx context.Context) (chan error, error) {
 	logrus.Infof("Starting WSL VM")
-	status, err := store.GetWslStatus(l.Instance.Name)
+	status, err := store.GetWslStatus(l.Instance.Name, l.Instance.DistroName)
 	if err != nil {
 		return nil, err
 	}
