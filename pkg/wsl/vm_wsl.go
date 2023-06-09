@@ -119,12 +119,19 @@ func attachDisks(driver *driver.BaseDriver) error {
 		return fmt.Errorf("failed to create mount path in VM %s: %w", driver.Instance.Name, err)
 	}
 	logrus.Infof("output of mkdir: %s", out)
-	logrus.Infof("mounting cidata in distro %s...", driver.Instance.DistroName)
-	_, err = wslCommand("-d", driver.Instance.DistroName, "mount", "-t", "iso9660", ciDataPath, "/mnt/lima-cidata")
+	logrus.Infof("adding fstab mount %s...", driver.Instance.DistroName)
+	out, err = wslCommand("-d", driver.Instance.DistroName, fmt.Sprintf(`<<EOF cat >> /etc/fstab
+%s     /mnt/lima-cidata    iso9660 defaults,uid=1000,gid=1000    0    0
+EOF`, ciDataPath))
 	if err != nil {
-		return fmt.Errorf("failed to create mount path in VM %s: %w", driver.Instance.Name, err)
+		return fmt.Errorf("failed to write fstab in VM %s: %w", driver.Instance.Name, err)
 	}
-	logrus.Infof("output of mount: %s", out)
+	logrus.Infof("output of cat: %s", out)
+	// _, err = wslCommand("-d", driver.Instance.DistroName, "mount", "-t", "iso9660", ciDataPath, "/mnt/lima-cidata")
+	// if err != nil {
+	// 	return fmt.Errorf("failed to create mount path in VM %s: %w", driver.Instance.Name, err)
+	// }
+	// logrus.Infof("output of mount: %s", out)
 	logrus.Infof("cidata mounted!")
 	return nil
 }
