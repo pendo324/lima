@@ -120,6 +120,11 @@ func attachDisks(driver *driver.BaseDriver) error {
 	}
 	logrus.Infof("output of mkdir: %s", out)
 	logrus.Infof("adding fstab mount %s...", driver.Instance.DistroName)
+	out, err = wslCommand("-d", driver.Instance.DistroName, "touch", "/etc/fstab")
+	if err != nil {
+		return fmt.Errorf("failed to create fstab file in VM %s: %w", driver.Instance.Name, err)
+	}
+	logrus.Infof("output of touch: %s", out)
 	out, err = wslCommand("-d", driver.Instance.DistroName, fmt.Sprintf(`<<EOF cat >> /etc/fstab
 %s     /mnt/lima-cidata    iso9660 defaults,uid=1000,gid=1000    0    0
 EOF`, ciDataPath))
