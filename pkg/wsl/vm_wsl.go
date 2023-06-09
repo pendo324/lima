@@ -114,15 +114,17 @@ func attachDisks(driver *driver.BaseDriver) error {
 
 	logrus.Infof("Attaching cidata...")
 	logrus.Infof("creating cidata dir in distro %s...", driver.Instance.DistroName)
-	_, err := wslCommand("-d", driver.Instance.DistroName, "mkdir", "/mnt/lima-cidata")
+	out, err := wslCommand("-d", driver.Instance.DistroName, "mkdir", "/mnt/lima-cidata")
 	if err != nil {
 		return fmt.Errorf("failed to create mount path in VM %s: %w", driver.Instance.Name, err)
 	}
+	logrus.Infof("output of mkdir: %s", out)
 	logrus.Infof("mounting cidata in distro %s...", driver.Instance.DistroName)
 	_, err = wslCommand("-d", driver.Instance.DistroName, "mount", "-t", "iso9660", ciDataPath, "/mnt/lima-cidata")
 	if err != nil {
 		return fmt.Errorf("failed to create mount path in VM %s: %w", driver.Instance.Name, err)
 	}
+	logrus.Infof("output of mount: %s", out)
 	logrus.Infof("cidata mounted!")
 	return nil
 }
