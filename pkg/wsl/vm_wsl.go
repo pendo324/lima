@@ -112,14 +112,17 @@ func supportsWsl2() error {
 func attachDisks(driver *driver.BaseDriver) error {
 	ciDataPath := filepath.Join(driver.Instance.Dir, filenames.CIDataISO)
 
+	logrus.Infof("Attaching cidata...")
+	logrus.Infof("creating cidata dir in distro %s...", driver.Instance.DistroName)
 	_, err := wslCommand("-d", driver.Instance.DistroName, "mkdir", "/mnt/lima-cidata")
 	if err != nil {
 		return fmt.Errorf("failed to create mount path in VM %s: %w", driver.Instance.Name, err)
 	}
+	logrus.Infof("mounting cidata in distro %s...", driver.Instance.DistroName)
 	_, err = wslCommand("-d", driver.Instance.DistroName, "mount", "-t", "iso9660", ciDataPath, "/mnt/lima-cidata")
 	if err != nil {
 		return fmt.Errorf("failed to create mount path in VM %s: %w", driver.Instance.Name, err)
 	}
-
+	logrus.Infof("cidata mounted!")
 	return nil
 }
