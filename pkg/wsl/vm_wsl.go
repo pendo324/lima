@@ -139,7 +139,7 @@ EOF
 		return fmt.Errorf("failed to write systemd service in VM %s: %w", driver.Instance.Name, err)
 	}
 	logrus.Infof("output of write systemd service: %s", out)
-	out, err = wslCommand("-d", driver.Instance.DistroName, "systemctl enable --now lima-disk-mount")
+	out, err = wslCommand("-d", driver.Instance.DistroName, "systemctl", "enable", "--now", "lima-disk-mount")
 	if err != nil {
 		return fmt.Errorf("failed to enable lima-disk-mount service in VM %s: %w", driver.Instance.Name, err)
 	}
