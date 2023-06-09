@@ -154,6 +154,11 @@ EOF
 		return fmt.Errorf("failed to restart cloud-init in VM %s: %w", driver.Instance.Name, err)
 	}
 	logrus.Infof("output of cloud-init: %s", out)
+	out, err = wslCommand("-d", driver.Instance.DistroName, "systemctl", "restart", "cloud-final")
+	if err != nil {
+		return fmt.Errorf("failed to restart cloud-final in VM %s: %w", driver.Instance.Name, err)
+	}
+	logrus.Infof("output of cloud-final: %s", out)
 	// _, err = wslCommand("-d", driver.Instance.DistroName, "mount", "-t", "iso9660", ciDataPath, "/mnt/lima-cidata")
 	// if err != nil {
 	// 	return fmt.Errorf("failed to create mount path in VM %s: %w", driver.Instance.Name, err)
