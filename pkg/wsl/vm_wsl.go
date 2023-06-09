@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strconv"
 
+	"github.com/lima-vm/lima/pkg/driver"
 	"github.com/lima-vm/lima/pkg/ioutilx"
 	"github.com/lima-vm/lima/pkg/store/filenames"
 	"github.com/sirupsen/logrus"
@@ -23,6 +25,22 @@ func wslCommand(args ...string) (string, error) {
 	outString, err := ioutilx.FromUTF16leToString(out)
 	if err != nil {
 		return "", fmt.Errorf("failed to convert output from UTF16 when running wsl command wsl.exe %v, err: %w", args, err)
+	}
+	return outString, nil
+}
+
+func powershellCommand(args ...string) (string, error) {
+	cmd := exec.Command("powershell.exe", args...)
+	out, err := cmd.StdoutPipe()
+	if err != nil {
+		return "", err
+	}
+	if err := cmd.Start(); err != nil {
+		return "", err
+	}
+	outString, err := ioutilx.FromUTF16leToString(out)
+	if err != nil {
+		return "", fmt.Errorf("failed to convert output from UTF16 when running powershell command powershell.exe %v, err: %w", args, err)
 	}
 	return outString, nil
 }
@@ -88,5 +106,20 @@ func supportsWsl2() error {
 		}
 		return nil
 	}
+	return nil
+}
+
+func attachDisks(driver *driver.BaseDriver) error {
+	ciDataPath := filepath.Join(driver.Instance.Dir, filenames.CIDataISO)
+
+	_, err := wslCommand("-d", driver.Instance.DistroName, "mkdir", "/mnt/lima-cidata")
+	if err != nil {
+		return fmt.Errorf("failed to create mount path in VM %s: %w", driver.Instance.Name, err)
+	}
+	_, err = wslCommand("-d", driver.Instance.DistroName, "mount", "-t", "iso9660", ciDataPath, "/mnt/lima-cidata")
+	if err != nil {
+		return fmt.Errorf("failed to create mount path in VM %s: %w", driver.Instance.Name, err)
+	}
+
 	return nil
 }

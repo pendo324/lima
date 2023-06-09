@@ -126,19 +126,18 @@ func (l *LimaWslDriver) Start(ctx context.Context) (chan error, error) {
 	}
 
 	if status == store.StatusUnititialized {
-		err = EnsureFs(l.BaseDriver)
-		if err != nil {
+		if err := EnsureFs(l.BaseDriver); err != nil {
 			return nil, err
 		}
-		err = initVM(l.Instance.Name, l.Instance.Dir)
-		if err != nil {
+		if err := initVM(l.Instance.Name, l.Instance.Dir); err != nil {
 			return nil, err
 		}
 	}
 
-	err = startVM(l.Instance.Name)
-
-	if err != nil {
+	if err := startVM(l.Instance.Name); err != nil {
+		return nil, err
+	}
+	if err := attachDisks(l.BaseDriver); err != nil {
 		return nil, err
 	}
 
