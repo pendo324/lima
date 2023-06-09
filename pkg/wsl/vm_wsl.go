@@ -125,11 +125,28 @@ func attachDisks(driver *driver.BaseDriver) error {
 		return fmt.Errorf("failed to create fstab file in VM %s: %w", driver.Instance.Name, err)
 	}
 	logrus.Infof("output of touch: %s", out)
-	out, err = wslCommand("-d", driver.Instance.DistroName, fmt.Sprintf(`losetup -fP $(wslpath '%s')`, ciDataPath))
+	out, err = wslCommand("-d", driver.Instance.DistroName, fmt.Sprintf(`<<EOF cat >> /etc/systemd/system/lima-disk-mount.service
+[Unit]
+Description=Create lima mounts
+After=systemd-remount-fs.service
+[Service]
+Type=oneshot
+ExecStart=mount --make-shared /mnt/c/; losetup -fP $(/usr/bin/wslpath '%s')
+RemainAfterExit=yes
+TimeoutSec=0
+StandardOutput=journal+console
+[Install]
+WantedBy=multi-user.target
+EOF`, ciDataPath))
 	if err != nil {
-		return fmt.Errorf("failed to run losetup in VM %s: %w", driver.Instance.Name, err)
+		return fmt.Errorf("failed to write systemd service in VM %s: %w", driver.Instance.Name, err)
 	}
-	logrus.Infof("output of losetup: %s", out)
+	logrus.Infof("output of cat: %s", out)
+	out, err = wslCommand("-d", driver.Instance.DistroName, "systemctl enable --now lima-disk-mount")
+	if err != nil {
+		return fmt.Errorf("failed to enable lima-disk-mount service in VM %s: %w", driver.Instance.Name, err)
+	}
+	logrus.Infof("output of systemctl enable --now lima-disk-mount: %s", out)
 	// _, err = wslCommand("-d", driver.Instance.DistroName, "mount", "-t", "iso9660", ciDataPath, "/mnt/lima-cidata")
 	// if err != nil {
 	// 	return fmt.Errorf("failed to create mount path in VM %s: %w", driver.Instance.Name, err)
