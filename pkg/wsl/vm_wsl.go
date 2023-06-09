@@ -144,6 +144,16 @@ EOF
 		return fmt.Errorf("failed to enable lima-disk-mount service in VM %s: %w", driver.Instance.Name, err)
 	}
 	logrus.Infof("output of systemctl enable --now lima-disk-mount: %s", out)
+	out, err = wslCommand("-d", driver.Instance.DistroName, "/usr/lib/cloud-init/ds-identify", "--force")
+	if err != nil {
+		return fmt.Errorf("failed to re-run ds-identify in VM %s: %w", driver.Instance.Name, err)
+	}
+	logrus.Infof("output of ds-identify: %s", out)
+	out, err = wslCommand("-d", driver.Instance.DistroName, "systemctl", "restart", "cloud-init")
+	if err != nil {
+		return fmt.Errorf("failed to restart cloud-init in VM %s: %w", driver.Instance.Name, err)
+	}
+	logrus.Infof("output of cloud-init: %s", out)
 	// _, err = wslCommand("-d", driver.Instance.DistroName, "mount", "-t", "iso9660", ciDataPath, "/mnt/lima-cidata")
 	// if err != nil {
 	// 	return fmt.Errorf("failed to create mount path in VM %s: %w", driver.Instance.Name, err)
