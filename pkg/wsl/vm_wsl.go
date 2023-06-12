@@ -138,7 +138,7 @@ StandardOutput=journal+console
 [Install]
 WantedBy=multi-user.target
 EOF
-`, ciDataPath, limaCIDataIsoPath, limaCIDataIsoPath, limaCIDataIsoPath))
+`, limaCIDataIsoPath, ciDataPath, limaCIDataIsoPath, limaCIDataIsoPath))
 	if err != nil {
 		return fmt.Errorf("failed to write systemd service in VM %s: %w", driver.Instance.Name, err)
 	}
