@@ -2,7 +2,11 @@
 Description=lima-guestagent
 
 [Service]
+{{ if eq .Audit "False" }}
+ExecStart={{.Binary}} daemon --audit=false
+{{ else }}
 ExecStart={{.Binary}} daemon
+{{ end }}
 Type=simple
 Restart=on-failure
 

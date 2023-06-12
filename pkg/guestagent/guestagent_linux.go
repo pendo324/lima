@@ -18,27 +18,29 @@ import (
 	"golang.org/x/sys/cpu"
 )
 
-func New(newTicker func() (<-chan time.Time, func()), iptablesIdle time.Duration) (Agent, error) {
+func New(newTicker func() (<-chan time.Time, func()), iptablesIdle time.Duration, audit bool) (Agent, error) {
 	a := &agent{
 		newTicker:                newTicker,
 		kubernetesServiceWatcher: kubernetesservice.NewServiceWatcher(),
 	}
 
-	auditClient, err := libaudit.NewMulticastAuditClient(nil)
-	if err != nil {
-		return nil, err
-	}
-	auditStatus, err := auditClient.GetStatus()
-	if err != nil {
-		return nil, err
-	}
-	if auditStatus.Enabled == 0 {
-		if err = auditClient.SetEnabled(true, libaudit.WaitForReply); err != nil {
+	if !audit {
+		auditClient, err := libaudit.NewMulticastAuditClient(nil)
+		if err != nil {
 			return nil, err
 		}
-	}
+		auditStatus, err := auditClient.GetStatus()
+		if err != nil {
+			return nil, err
+		}
+		if auditStatus.Enabled == 0 {
+			if err = auditClient.SetEnabled(true, libaudit.WaitForReply); err != nil {
+				return nil, err
+			}
+		}
 
-	go a.setWorthCheckingIPTablesRoutine(auditClient, iptablesIdle)
+		go a.setWorthCheckingIPTablesRoutine(auditClient, iptablesIdle)
+	}
 	go a.kubernetesServiceWatcher.Start()
 	go a.fixSystemTimeSkew()
 	return a, nil

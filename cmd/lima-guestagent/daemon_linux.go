@@ -21,12 +21,14 @@ func newDaemonCommand() *cobra.Command {
 		RunE:  daemonAction,
 	}
 	daemonCommand.Flags().Duration("tick", 3*time.Second, "tick for polling events")
+	daemonCommand.Flags().Bool("audit", true, "use audit features")
 	return daemonCommand
 }
 
 func daemonAction(cmd *cobra.Command, _ []string) error {
 	socket := "/run/lima-guestagent.sock"
 	tick, err := cmd.Flags().GetDuration("tick")
+	audit, err := cmd.Flags().GetBool("audit")
 	if err != nil {
 		return err
 	}
@@ -46,7 +48,7 @@ func daemonAction(cmd *cobra.Command, _ []string) error {
 		return ticker.C, ticker.Stop
 	}
 
-	agent, err := guestagent.New(newTicker, tick*20)
+	agent, err := guestagent.New(newTicker, tick*20, audit)
 	if err != nil {
 		return err
 	}

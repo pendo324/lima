@@ -19,11 +19,13 @@ func newInstallSystemdCommand() *cobra.Command {
 		Short: "install a systemd unit (user)",
 		RunE:  installSystemdAction,
 	}
+	installSystemdCommand.Flags().Bool("audit", true, "use audit features")
 	return installSystemdCommand
 }
 
-func installSystemdAction(_ *cobra.Command, _ []string) error {
-	unit, err := generateSystemdUnit()
+func installSystemdAction(cmd *cobra.Command, args []string) error {
+	audit, err := cmd.Flags().GetBool("audit")
+	unit, err := generateSystemdUnit(audit)
 	if err != nil {
 		return err
 	}
@@ -60,13 +62,17 @@ func installSystemdAction(_ *cobra.Command, _ []string) error {
 //go:embed lima-guestagent.TEMPLATE.service
 var systemdUnitTemplate string
 
-func generateSystemdUnit() ([]byte, error) {
+func generateSystemdUnit(audit bool) ([]byte, error) {
 	selfExeAbs, err := os.Executable()
 	if err != nil {
 		return nil, err
 	}
 	m := map[string]string{
 		"Binary": selfExeAbs,
+		"Audit":  "True",
+	}
+	if !audit {
+		m["Audit"] = "False"
 	}
 	return textutil.ExecuteTemplate(systemdUnitTemplate, m)
 }
