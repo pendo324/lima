@@ -132,6 +132,7 @@ ExecStart=mkdir -p %s
 ExecStart=mount -t iso9660 $(/usr/bin/wslpath '%s') %s
 ExecStart=mkdir -p -m 700 /mnt/lima-cidata
 ExecStart=cp -a %s/. /mnt/lima-cidata
+ExecStart=chmod +x /mnt/lima-cidata/boot.sh
 RemainAfterExit=yes
 TimeoutSec=0
 StandardOutput=journal+console
