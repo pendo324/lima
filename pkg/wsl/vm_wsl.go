@@ -120,6 +120,7 @@ func attachDisks(driver *driver.BaseDriver) error {
 	}
 	logrus.Infof("output of mkdir: %s", out)
 	logrus.Infof("adding systemd service %s...", driver.Instance.DistroName)
+	limaCIDataIsoPath := "${TMPDIR:-${TEMP:-${TMP:-/tmp}}}/lima-cidata-iso"
 	out, err = wslCommand("-d", driver.Instance.DistroName, "bash", "-c", fmt.Sprintf(`<<EOF cat >> /etc/systemd/system/lima-disk-mount.service
 [Unit]
 Description=Create lima mounts
@@ -127,14 +128,17 @@ After=systemd-remount-fs.service
 [Service]
 Type=oneshot
 ExecStart=mount --make-shared /mnt/c/
-ExecStart=losetup -fP $(/usr/bin/wslpath '%s')
+ExecStart=mkdir -p %s
+ExecStart=mount -t iso9660 $(/usr/bin/wslpath '%s') %s
+ExecStart=mkdir -p /mnt/lima-cidata
+ExecStart=cp -a %s /mnt/lima-cidata
 RemainAfterExit=yes
 TimeoutSec=0
 StandardOutput=journal+console
 [Install]
 WantedBy=multi-user.target
 EOF
-`, ciDataPath))
+`, ciDataPath, limaCIDataIsoPath, limaCIDataIsoPath, limaCIDataIsoPath))
 	if err != nil {
 		return fmt.Errorf("failed to write systemd service in VM %s: %w", driver.Instance.Name, err)
 	}

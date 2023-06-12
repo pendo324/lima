@@ -33,9 +33,7 @@ write_files:
       LIMA_CIDATA_MNT="/mnt/lima-cidata"
       LIMA_CIDATA_DEV="/dev/disk/by-label/cidata"
       mkdir -p -m 700 "${LIMA_CIDATA_MNT}"
-      {{ if eq .VMType "wsl" }}
-      mount -t iso9660 "${LIMA_CIDATA_DEV}" "${LIMA_CIDATA_MNT}"
-      {{ else }}
+      {{ if not eq .VMType "wsl" }}
       mount -o ro,mode=0700,dmode=0700,overriderockperm,exec,uid=0 "${LIMA_CIDATA_DEV}" "${LIMA_CIDATA_MNT}"
       {{ end }}
       export LIMA_CIDATA_MNT
