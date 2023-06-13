@@ -1,6 +1,7 @@
 package store
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -408,24 +409,17 @@ func GetWslStatus(instName, distroName string) (string, error) {
 	//   NAME      STATE           VERSION
 	// * Ubuntu    Stopped         2
 	cmd := exec.Command("wsl.exe", "--list", "--verbose")
-	out, err := cmd.StdoutPipe()
+	out, err := cmd.CombinedOutput()
+	outString, outUTFErr := ioutilx.FromUTF16leToString(bytes.NewReader(out))
 	if err != nil {
+		logrus.Debugf("outString: %s", outString)
 		return "", fmt.Errorf("failed to read instance state for instance %s, try running `wsl --list --verbose` to debug, err: %w", instName, err)
 	}
 
-	if err := cmd.Start(); err != nil {
-		return "", fmt.Errorf("failed to read instance state for instance %s, try running `wsl --list --verbose` to debug, err: %w", instName, err)
-	}
-
-	outString, err := ioutilx.FromUTF16leToString(out)
-
-	if err := cmd.Wait(); err != nil {
-		return "", fmt.Errorf("failed to read instance state for instance %s, try running `wsl --list --verbose` to debug, err: %w", instName, err)
-	}
-
-	if err != nil {
+	if outUTFErr != nil {
 		return "", fmt.Errorf("failed to convert output from UTF16 for instance state for instance %s, err: %w", instName, err)
 	}
+
 	if len(outString) == 0 {
 		return StatusBroken, fmt.Errorf("failed to read instance state for instance %s, try running `wsl --list --verbose` to debug, err: %w", instName, err)
 	}
@@ -459,24 +453,15 @@ func GetSSHAddress(instName, distroName string) (string, error) {
 	// PS > wsl -d <distroName> bash -c hostname -I | cut -d' ' -f1
 	// 168.1.1.1 ]10.0.0.1]
 	cmd := exec.Command("wsl.exe", "-d", distroName, `bash -c "hostname -I | cut -d' ' -f1"`)
-	out, err := cmd.StdoutPipe()
+	out, err := cmd.CombinedOutput()
+	outString, outUTFErr := ioutilx.FromUTF16leToString(bytes.NewReader(out))
 	if err != nil {
-		return "", fmt.Errorf("failed to get hostname from instance %s (command: %s), err: %w", instName, cmd.String(), err)
-	}
-
-	if err := cmd.Start(); err != nil {
-		return "", fmt.Errorf("failed to get hostname from instance %s (command: %s), err: %w", instName, cmd.String(), err)
-	}
-
-	outString, err := ioutilx.FromUTF16leToString(out)
-
-	if err := cmd.Wait(); err != nil {
 		logrus.Debugf("outString: %s", outString)
-		return "", fmt.Errorf("failed to get hostname from instance %s (command: %s), err: %w", instName, cmd.String(), err)
+		return "", fmt.Errorf("failed to read instance state for instance %s, try running `wsl --list --verbose` to debug, err: %w", instName, err)
 	}
 
-	if err != nil {
-		return "", fmt.Errorf("failed to convert output from UTF16 for instance state for instance %s (command: %s), err: %w", instName, cmd.String(), err)
+	if outUTFErr != nil {
+		return "", fmt.Errorf("failed to convert output from UTF16 for instance state for instance %s, err: %w", instName, err)
 	}
 
 	return outString, nil
