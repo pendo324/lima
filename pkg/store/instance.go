@@ -25,6 +25,7 @@ import (
 	"github.com/lima-vm/lima/pkg/store/dirnames"
 	"github.com/lima-vm/lima/pkg/store/filenames"
 	"github.com/lima-vm/lima/pkg/textutil"
+	"github.com/sirupsen/logrus"
 )
 
 type Status = string
@@ -416,6 +417,10 @@ func GetWslStatus(instName, distroName string) (string, error) {
 		return "", fmt.Errorf("failed to read instance state for instance %s, try running `wsl --list --verbose` to debug, err: %w", instName, err)
 	}
 
+	if err := cmd.Wait(); err != nil {
+		return "", fmt.Errorf("failed to read instance state for instance %s, try running `wsl --list --verbose` to debug, err: %w", instName, err)
+	}
+
 	outString, err := ioutilx.FromUTF16leToString(out)
 	if err != nil {
 		return "", fmt.Errorf("failed to convert output from UTF16 for instance state for instance %s, err: %w", instName, err)
@@ -449,10 +454,9 @@ func GetWslStatus(instName, distroName string) (string, error) {
 }
 
 func GetSSHAddress(instName, distroName string) (string, error) {
-	// Expected output (whitespace preserved):
-	// PS > wsl --list --verbose
-	//   NAME      STATE           VERSION
-	// * Ubuntu    Stopped         2
+	// Expected output (whitespace preserved, [] for optional):
+	// PS > wsl -d <distroName> bash -c hostname -I | cut -d' ' -f1
+	// 168.1.1.1 ]10.0.0.1]
 	cmd := exec.Command("wsl.exe", "-d", distroName, `bash -c "hostname -I | cut -d' ' -f1"`)
 	out, err := cmd.StdoutPipe()
 	if err != nil {
@@ -460,6 +464,12 @@ func GetSSHAddress(instName, distroName string) (string, error) {
 	}
 
 	if err := cmd.Start(); err != nil {
+		return "", fmt.Errorf("failed to get hostname from instance %s (command: %s), err: %w", instName, cmd.String(), err)
+	}
+
+	if err := cmd.Wait(); err != nil {
+		outString, _ := ioutilx.FromUTF16leToString(out)
+		logrus.Debugf("outString: %s", outString)
 		return "", fmt.Errorf("failed to get hostname from instance %s (command: %s), err: %w", instName, cmd.String(), err)
 	}
 
