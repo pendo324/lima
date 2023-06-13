@@ -107,12 +107,18 @@ func Inspect(instName string) (*Instance, error) {
 		if err != nil {
 			inst.Status = StatusBroken
 			inst.Errors = append(inst.Errors, err)
+		} else {
+			inst.Status = status
 		}
-		sshAddr, err := GetSSHAddress(instName, inst.DistroName)
-		if err == nil {
-			inst.SSHAddress = sshAddr
+
+		if inst.Status == StatusStopped || inst.Status == StatusRunning {
+			sshAddr, err := GetSSHAddress(instName, inst.DistroName)
+			if err == nil {
+				inst.SSHAddress = sshAddr
+			} else {
+				inst.Errors = append(inst.Errors, err)
+			}
 		}
-		inst.Status = status
 
 		return inst, nil
 	}
@@ -452,12 +458,12 @@ func GetSSHAddress(instName, distroName string) (string, error) {
 	// Expected output (whitespace preserved, [] for optional):
 	// PS > wsl -d <distroName> bash -c hostname -I | cut -d' ' -f1
 	// 168.1.1.1 ]10.0.0.1]
-	cmd := exec.Command("wsl.exe", "-d", distroName, `bash -c "hostname -I | cut -d' ' -f1"`)
+	cmd := exec.Command("wsl.exe", "-d", distroName, "bash", "-c", `hostname -I | cut -d' ' -f1"`)
 	out, err := cmd.CombinedOutput()
 	outString, outUTFErr := ioutilx.FromUTF16leToString(bytes.NewReader(out))
 	if err != nil {
 		logrus.Debugf("outString: %s", outString)
-		return "", fmt.Errorf("failed to read instance state for instance %s, try running `wsl --list --verbose` to debug, err: %w", instName, err)
+		return "", fmt.Errorf("failed to get hostname for instance %s, err: %w", instName, err)
 	}
 
 	if outUTFErr != nil {
