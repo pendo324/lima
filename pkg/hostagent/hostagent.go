@@ -43,6 +43,7 @@ type HostAgent struct {
 	tcpDNSLocalPort int
 	instDir         string
 	instName        string
+	instSSHAddress  string
 	sshConfig       *ssh.SSHConfig
 	portForwarder   *portForwarder
 	onClose         []func() error // LIFO
@@ -146,6 +147,7 @@ func New(instName string, stdout io.Writer, sigintCh chan os.Signal, opts ...Opt
 		tcpDNSLocalPort: tcpDNSLocalPort,
 		instDir:         inst.Dir,
 		instName:        instName,
+		instSSHAddress:  inst.SSHAddress,
 		sshConfig:       sshConfig,
 		portForwarder:   newPortForwarder(sshConfig, sshLocalPort, rules),
 		driver:          limaDriver,
@@ -333,6 +335,10 @@ func (a *HostAgent) Run(ctx context.Context) error {
 		logrus.Infof("VNC server running at %s <%s>", vncdisplay, vncurl)
 		logrus.Infof("VNC Display: `%s`", vncfile)
 		logrus.Infof("VNC Password: `%s`", vncpwdfile)
+	}
+
+	if *a.y.VMType == limayaml.WSL {
+		forwardTCPWsl(ctx, a.sshConfig, 0, fmt.Sprintf("127.0.0.1:%d", a.sshLocalPort), fmt.Sprintf("%s:22", a.instSSHAddress), verbForward)
 	}
 
 	if a.driver.CanRunGUI() {

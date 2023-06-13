@@ -59,6 +59,7 @@ type Instance struct {
 	Config          *limayaml.LimaYAML `json:"config,omitempty"`
 	RootFsPath      string             `json:"rootfs,omitempty"`
 	DistroName      string             `json:"distroName,omitempty"`
+	SSHAddress      string             `json:"sshAddress,omitempty"`
 }
 
 func (inst *Instance) LoadYAML() (*limayaml.LimaYAML, error) {
@@ -96,6 +97,7 @@ func Inspect(instName string) (*Instance, error) {
 	inst.Arch = *y.Arch
 	inst.VMType = *y.VMType
 	inst.CPUType = y.CPUType[*y.Arch]
+	inst.SSHAddress = "127.0.0.1"
 
 	if inst.VMType == limayaml.WSL {
 		inst.DistroName = fmt.Sprintf("%s-%s", "lima", inst.Name)
@@ -103,6 +105,10 @@ func Inspect(instName string) (*Instance, error) {
 		if err != nil {
 			inst.Status = StatusBroken
 			inst.Errors = append(inst.Errors, err)
+		}
+		sshAddr, err := GetSSHAddress(instName, inst.DistroName)
+		if err == nil {
+			inst.SSHAddress = sshAddr
 		}
 		inst.Status = status
 
@@ -347,7 +353,7 @@ func PrintInstances(w io.Writer, instances []*Instance, format string, options *
 			fmt.Fprintf(w, "%s\t%s\t%s",
 				instance.Name,
 				instance.Status,
-				fmt.Sprintf("127.0.0.1:%d", instance.SSHLocalPort),
+				fmt.Sprintf("%s:%d", instance.SSHAddress, instance.SSHLocalPort),
 			)
 			if !hideType {
 				fmt.Fprintf(w, "\t%s",
@@ -440,4 +446,27 @@ func GetWslStatus(instName, distroName string) (string, error) {
 	}
 
 	return instState, nil
+}
+
+func GetSSHAddress(instName, distroName string) (string, error) {
+	// Expected output (whitespace preserved):
+	// PS > wsl --list --verbose
+	//   NAME      STATE           VERSION
+	// * Ubuntu    Stopped         2
+	cmd := exec.Command("wsl.exe", "-d", distroName, `bash -c "hostname -I | cut -d' ' -f1"`)
+	out, err := cmd.StdoutPipe()
+	if err != nil {
+		return "", fmt.Errorf("failed to get hostname from instance %s (command: %s), err: %w", instName, cmd.String(), err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		return "", fmt.Errorf("failed to get hostname from instance %s (command: %s), err: %w", instName, cmd.String(), err)
+	}
+
+	outString, err := ioutilx.FromUTF16leToString(out)
+	if err != nil {
+		return "", fmt.Errorf("failed to convert output from UTF16 for instance state for instance %s (command: %s), err: %w", instName, cmd.String(), err)
+	}
+
+	return outString, nil
 }
