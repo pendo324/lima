@@ -338,7 +338,11 @@ func (a *HostAgent) Run(ctx context.Context) error {
 	}
 
 	if *a.y.VMType == limayaml.WSL {
-		forwardTCPWsl(ctx, a.sshConfig, 0, fmt.Sprintf("127.0.0.1:%d", a.sshLocalPort), fmt.Sprintf("%s:22", a.instSSHAddress), verbForward)
+		local := fmt.Sprintf("127.0.0.1:%d", a.sshLocalPort)
+		remote := fmt.Sprintf("%s:22", a.instSSHAddress)
+		logrus.Debugf("Forwarding for SSH connection: local (%s) => remote (%s)", local, remote)
+		err := forwardTCPWsl(ctx, a.sshConfig, 0, local, remote, verbForward)
+		logrus.Errorf("failed to forward SSH connection: %v", err)
 	}
 
 	if a.driver.CanRunGUI() {
