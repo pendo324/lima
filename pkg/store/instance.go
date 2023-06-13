@@ -417,11 +417,12 @@ func GetWslStatus(instName, distroName string) (string, error) {
 		return "", fmt.Errorf("failed to read instance state for instance %s, try running `wsl --list --verbose` to debug, err: %w", instName, err)
 	}
 
+	outString, err := ioutilx.FromUTF16leToString(out)
+
 	if err := cmd.Wait(); err != nil {
 		return "", fmt.Errorf("failed to read instance state for instance %s, try running `wsl --list --verbose` to debug, err: %w", instName, err)
 	}
 
-	outString, err := ioutilx.FromUTF16leToString(out)
 	if err != nil {
 		return "", fmt.Errorf("failed to convert output from UTF16 for instance state for instance %s, err: %w", instName, err)
 	}
@@ -467,13 +468,13 @@ func GetSSHAddress(instName, distroName string) (string, error) {
 		return "", fmt.Errorf("failed to get hostname from instance %s (command: %s), err: %w", instName, cmd.String(), err)
 	}
 
+	outString, err := ioutilx.FromUTF16leToString(out)
+
 	if err := cmd.Wait(); err != nil {
-		outString, _ := ioutilx.FromUTF16leToString(out)
 		logrus.Debugf("outString: %s", outString)
 		return "", fmt.Errorf("failed to get hostname from instance %s (command: %s), err: %w", instName, cmd.String(), err)
 	}
 
-	outString, err := ioutilx.FromUTF16leToString(out)
 	if err != nil {
 		return "", fmt.Errorf("failed to convert output from UTF16 for instance state for instance %s (command: %s), err: %w", instName, cmd.String(), err)
 	}
