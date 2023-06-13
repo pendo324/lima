@@ -554,7 +554,7 @@ func (a *HostAgent) processGuestAgentEvents(ctx context.Context, localUnix strin
 		for _, f := range ev.Errors {
 			logrus.Warnf("received error from the guest: %q", f)
 		}
-		a.portForwarder.OnEvent(ctx, ev)
+		a.portForwarder.OnEvent(ctx, ev, *a.y.VMType)
 	}
 
 	if err := client.Events(ctx, onEvent); err != nil {
