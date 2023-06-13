@@ -337,6 +337,8 @@ func (a *HostAgent) Run(ctx context.Context) error {
 		logrus.Infof("VNC Password: `%s`", vncpwdfile)
 	}
 
+	logrus.Debugf("Lima VMType: %s. limayaml.WSL: %s. VMType == limayaml.WSL: %t", *a.y.VMType, limayaml.WSL, *a.y.VMType == limayaml.WSL)
+
 	if *a.y.VMType == limayaml.WSL {
 		local := fmt.Sprintf("127.0.0.1:%d", a.sshLocalPort)
 		remote := fmt.Sprintf("%s:22", a.instSSHAddress)
