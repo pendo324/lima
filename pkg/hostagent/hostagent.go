@@ -537,7 +537,7 @@ func (a *HostAgent) watchGuestAgentEvents(ctx context.Context) {
 
 	for {
 		if !isGuestAgentSocketAccessible(ctx, localUnix) {
-			_ = forwardSSH(ctx, a.sshConfig, a.sshLocalPort, localUnix, remoteUnix, verbForward, false)
+			_ = forwardSSH(ctx, a.sshConfig, a.sshLocalPort, localUnixForwarding, remoteUnix, verbForward, false)
 		}
 		if err := a.processGuestAgentEvents(ctx, localUnix); err != nil {
 			if !errors.Is(err, context.Canceled) {
