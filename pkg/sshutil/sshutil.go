@@ -200,10 +200,18 @@ func CommonOpts(useDotSSH bool) ([]string, error) {
 		// We prioritize AES algorithms when AES accelerator is available.
 		if sshInfo.aesAccelerated {
 			logrus.Debugf("AES accelerator seems available, prioritizing aes128-gcm@openssh.com and aes256-gcm@openssh.com")
-			opts = append(opts, "Ciphers=\"^aes128-gcm@openssh.com,aes256-gcm@openssh.com\"")
+			if runtime.GOOS == "windows" {
+				opts = append(opts, "Ciphers=^aes128-gcm@openssh.com,aes256-gcm@openssh.com")
+			} else {
+				opts = append(opts, "Ciphers=\"^aes128-gcm@openssh.com,aes256-gcm@openssh.com\"")
+			}
 		} else {
 			logrus.Debugf("AES accelerator does not seem available, prioritizing chacha20-poly1305@openssh.com")
-			opts = append(opts, "Ciphers=\"^chacha20-poly1305@openssh.com\"")
+			if runtime.GOOS == "windows" {
+				opts = append(opts, "Ciphers=^chacha20-poly1305@openssh.com")
+			} else {
+				opts = append(opts, "Ciphers=\"^chacha20-poly1305@openssh.com\"")
+			}
 		}
 	}
 	return opts, nil
