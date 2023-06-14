@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 	"golang.org/x/text/encoding/unicode"
@@ -47,7 +48,7 @@ func CannonicalWindowsPath(orig string) string {
 		logrus.WithError(err).Errorf("failed to convert path to mingw, maybe not using Git ssh?")
 	} else {
 		logrus.Infof("cygpath output (for %s): %s", orig, string(out))
-		newPath = string(out)
+		newPath = strings.TrimSpace(string(out))
 	}
 	return newPath
 }
