@@ -218,10 +218,13 @@ func SSHOpts(instDir string, useDotSSH, forwardAgent bool, forwardX11 bool, forw
 	}
 	opts = append(opts,
 		fmt.Sprintf("User=%s", u.Username), // guest and host have the same username, but we should specify the username explicitly (#85)
-		"ControlMaster=auto",
-		fmt.Sprintf("ControlPath=\"%s\"", controlSock),
-		"ControlPersist=5m",
 	)
+	if runtime.GOOS != "windows" {
+		opts = append(opts,
+			"ControlMaster=auto",
+			fmt.Sprintf("ControlPath=\"%s\"", controlSock),
+			"ControlPersist=5m")
+	}
 	if forwardAgent {
 		opts = append(opts, "ForwardAgent=yes")
 	}
