@@ -13,7 +13,7 @@ import (
 )
 
 func runNetshWithCtx(ctx context.Context, args ...string) (string, error) {
-	cmd := exec.CommandContext(ctx, "netsh")
+	cmd := exec.CommandContext(ctx, "netsh", args...)
 	logrus.Infof("running netsh command: %s", cmd.String())
 	out, err := cmd.CombinedOutput()
 	outString, outUTFErr := ioutilx.FromUTF16leToString(bytes.NewReader(out))
@@ -30,7 +30,8 @@ func runNetshWithCtx(ctx context.Context, args ...string) (string, error) {
 		return "", fmt.Errorf("failed to convert output from UTF16 when running wsl command netsh.exe %v, err: %w", args, err)
 	}
 
-	logrus.Infof("netsh command out: %s", outString)
+	logrus.Infof("netsh command out: %s", out)
+	logrus.Infof("netsh command outString: %s", outString)
 	logrus.Infof("netsh command err: %v", err)
 
 	return outString, nil
