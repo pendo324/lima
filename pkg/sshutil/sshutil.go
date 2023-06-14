@@ -135,10 +135,13 @@ func CommonOpts(useDotSSH bool) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	var opts []string
 	if runtime.GOOS == "windows" {
 		privateKeyPath = ioutilx.CannonicalWindowsPath(privateKeyPath)
+		opts = []string{"IdentityFile=" + privateKeyPath}
+	} else {
+		opts = []string{"IdentityFile=\"" + privateKeyPath + "\""}
 	}
-	opts := []string{"IdentityFile=\"" + privateKeyPath + "\""}
 
 	// Append all private keys corresponding to ~/.ssh/*.pub to keep old instances working
 	// that had been created before lima started using an internal identity.
@@ -220,13 +223,15 @@ func SSHOpts(instDir string, useDotSSH, forwardAgent bool, forwardX11 bool, forw
 	if err != nil {
 		return nil, err
 	}
+	controlPath := fmt.Sprintf("ControlPath=\"%s\"", controlSock)
 	if runtime.GOOS == "windows" {
 		controlSock = ioutilx.CannonicalWindowsPath(controlSock)
+		controlPath = fmt.Sprintf("ControlPath=%s", controlSock)
 	}
 	opts = append(opts,
 		fmt.Sprintf("User=%s", u.Username), // guest and host have the same username, but we should specify the username explicitly (#85)
 		"ControlMaster=auto",
-		fmt.Sprintf("ControlPath=\"%s\"", controlSock),
+		controlPath,
 		"ControlPersist=5m",
 	)
 	if forwardAgent {
