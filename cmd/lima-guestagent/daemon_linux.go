@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -92,5 +91,5 @@ func daemonAction(cmd *cobra.Command, _ []string) error {
 		l = socketL
 		logrus.Infof("serving the guest agent on %q", socket)
 	}
-	return srv.Listen(l, nil)
+	return srv.Serve(l)
 }
