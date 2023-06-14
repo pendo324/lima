@@ -222,6 +222,10 @@ func ReadPIDFile(path string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	// os.FindProcess will only return running processes on Windows, exit early
+	if runtime.GOOS == "windows" {
+		return pid, nil
+	}
 	err = proc.Signal(syscall.Signal(0))
 	if err != nil {
 		if errors.Is(err, os.ErrProcessDone) {
