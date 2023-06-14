@@ -120,6 +120,8 @@ func Inspect(instName string) (*Instance, error) {
 			}
 		}
 
+		inst.SSHLocalPort = *y.SSH.LocalPort
+
 		return inst, nil
 	}
 
@@ -361,7 +363,7 @@ func PrintInstances(w io.Writer, instances []*Instance, format string, options *
 			fmt.Fprintf(w, "%s\t%s\t%s",
 				instance.Name,
 				instance.Status,
-				fmt.Sprintf("%s:%d", instance.SSHAddress, instance.SSHLocalPort),
+				fmt.Sprintf("%s:%d", "127.0.0.1", instance.SSHLocalPort),
 			)
 			if !hideType {
 				fmt.Fprintf(w, "\t%s",
