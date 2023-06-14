@@ -465,5 +465,5 @@ func GetSSHAddress(instName, distroName string) (string, error) {
 		return "", fmt.Errorf("failed to get hostname for instance %s, err: %w", instName, err)
 	}
 
-	return string(out), nil
+	return strings.TrimSpace(string(out)), nil
 }

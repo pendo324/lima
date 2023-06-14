@@ -44,7 +44,7 @@ func forwardTCPWsl(ctx context.Context, _ *ssh.SSHConfig, _ int, local, remote s
 	if err != nil {
 		return err
 	}
-	connectaddress, connectport, err := net.SplitHostPort(local)
+	connectaddress, connectport, err := net.SplitHostPort(remote)
 	if err != nil {
 		return err
 	}
