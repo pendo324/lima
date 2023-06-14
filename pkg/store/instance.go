@@ -458,17 +458,12 @@ func GetSSHAddress(instName, distroName string) (string, error) {
 	// Expected output (whitespace preserved, [] for optional):
 	// PS > wsl -d <distroName> bash -c hostname -I | cut -d' ' -f1
 	// 168.1.1.1 ]10.0.0.1]
-	cmd := exec.Command("wsl.exe", "-d", distroName, "bash", "-c", `hostname -I | cut -d' ' -f1"`)
+	cmd := exec.Command("wsl.exe", "-d", distroName, "bash", "-c", "hostname", "-I", "|", "cut", "-d", "' '", "-f1")
 	out, err := cmd.CombinedOutput()
-	outString, outUTFErr := ioutilx.FromUTF16leToString(bytes.NewReader(out))
 	if err != nil {
-		logrus.Debugf("outString: %s", outString)
+		logrus.Debugf("outString: %s", out)
 		return "", fmt.Errorf("failed to get hostname for instance %s, err: %w", instName, err)
 	}
 
-	if outUTFErr != nil {
-		return "", fmt.Errorf("failed to convert output from UTF16 for instance state for instance %s, err: %w", instName, err)
-	}
-
-	return outString, nil
+	return string(out), nil
 }
