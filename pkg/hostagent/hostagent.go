@@ -342,11 +342,15 @@ func (a *HostAgent) Run(ctx context.Context) error {
 	if *a.y.VMType == limayaml.WSL {
 		local := fmt.Sprintf("127.0.0.1:%d", a.sshLocalPort)
 		remoteAddr, err := store.GetSSHAddress(a.instName, fmt.Sprintf("lima-%s", a.instName))
-		logrus.Errorf("failed to get remote SSH address: %v", err)
+		if err != nil {
+			logrus.Errorf("failed to get remote SSH address: %v", err)
+		}
 		remote := fmt.Sprintf("%s:22", remoteAddr)
 		logrus.Debugf("Forwarding for SSH connection: local (%s) => remote (%s)", local, remote)
 		err = forwardTCPWsl(ctx, a.sshConfig, 0, local, remote, verbForward)
-		logrus.Errorf("failed to forward SSH connection: %v", err)
+		if err != nil {
+			logrus.Errorf("failed to forward SSH connection: %v", err)
+		}
 	}
 
 	if a.driver.CanRunGUI() {

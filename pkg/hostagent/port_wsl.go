@@ -1,6 +1,7 @@
 package hostagent
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net"
@@ -12,27 +13,21 @@ import (
 
 func runNetshWithCtx(ctx context.Context, args ...string) (string, error) {
 	cmd := exec.CommandContext(ctx, "netsh")
-	out, err := cmd.StdoutPipe()
-	if err != nil {
-		return "", err
-	}
-	if err := cmd.Start(); err != nil {
-		switch err.(type) {
-		case *exec.ExitError:
-			if ee, ok := err.(*exec.ExitError); ok {
-				if ee.Exited() && ee.ExitCode() != 0 {
-					return "", fmt.Errorf("error calling netsh: %w", err)
-				}
+	out, err := cmd.CombinedOutput()
+	outString, outUTFErr := ioutilx.FromUTF16leToString(bytes.NewReader(out))
+	switch err.(type) {
+	case *exec.ExitError:
+		if ee, ok := err.(*exec.ExitError); ok {
+			if ee.Exited() && ee.ExitCode() != 0 {
+				return "", fmt.Errorf("error calling netsh (cmd: %s, out: %s): %w", cmd.String(), outString, err)
 			}
 		}
-
-		return "", fmt.Errorf("error calling netsh: %w", err)
 	}
 
-	outString, err := ioutilx.FromUTF16leToString(out)
-	if err != nil {
+	if outUTFErr != nil {
 		return "", fmt.Errorf("failed to convert output from UTF16 when running wsl command netsh.exe %v, err: %w", args, err)
 	}
+
 	return outString, nil
 }
 
