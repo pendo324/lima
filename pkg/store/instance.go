@@ -100,6 +100,7 @@ func Inspect(instName string) (*Instance, error) {
 	inst.VMType = *y.VMType
 	inst.CPUType = y.CPUType[*y.Arch]
 	inst.SSHAddress = "127.0.0.1"
+	inst.SSHLocalPort = *y.SSH.LocalPort // maybe 0
 
 	if inst.VMType == limayaml.WSL {
 		inst.DistroName = fmt.Sprintf("%s-%s", "lima", inst.Name)
@@ -120,8 +121,6 @@ func Inspect(instName string) (*Instance, error) {
 			}
 		}
 
-		inst.SSHLocalPort = *y.SSH.LocalPort
-
 		return inst, nil
 	}
 
@@ -136,7 +135,6 @@ func Inspect(instName string) (*Instance, error) {
 	}
 	inst.AdditionalDisks = y.AdditionalDisks
 	inst.Networks = y.Networks
-	inst.SSHLocalPort = *y.SSH.LocalPort // maybe 0
 	inst.SSHConfigFile = filepath.Join(instDir, filenames.SSHConfig)
 
 	inst.HostAgentPID, err = ReadPIDFile(filepath.Join(instDir, filenames.HostAgentPID))
