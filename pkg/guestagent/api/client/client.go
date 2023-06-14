@@ -7,7 +7,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
+	"runtime"
 
 	"github.com/lima-vm/lima/pkg/guestagent/api"
 	"github.com/lima-vm/lima/pkg/httpclientutil"
@@ -20,11 +22,24 @@ type GuestAgentClient interface {
 }
 
 // NewGuestAgentClient creates a client.
-// socketPath is a path to the UNIX socket, without unix:// prefix.
-func NewGuestAgentClient(socketPath string) (GuestAgentClient, error) {
-	hc, err := httpclientutil.NewHTTPClientWithSocketPath(socketPath)
-	if err != nil {
-		return nil, err
+// remote is a path to the UNIX socket, without unix:// prefix or a remote hostname/IP address.
+func NewGuestAgentClient(remote string) (GuestAgentClient, error) {
+	var hc *http.Client
+	if runtime.GOOS == "windows" {
+		hc = &http.Client{
+			Transport: &http.Transport{
+				DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+					var d net.Dialer
+					return d.DialContext(ctx, "tcp", fmt.Sprintf("%s:45645", remoteAddr))
+				},
+			},
+		}
+	} else {
+		hcSock, err := httpclientutil.NewHTTPClientWithSocketPath(socketPath)
+		if err != nil {
+			return nil, err
+		}
+		hc = hcSock
 	}
 	return NewGuestAgentClientWithHTTPClient(hc), nil
 }

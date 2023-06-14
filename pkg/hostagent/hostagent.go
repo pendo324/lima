@@ -536,10 +536,10 @@ func (a *HostAgent) watchGuestAgentEvents(ctx context.Context) {
 	})
 
 	for {
-		if !isGuestAgentSocketAccessible(ctx, localUnix) {
+		if !isGuestAgentSocketAccessible(ctx, localUnix, a.instSSHAddress) {
 			_ = forwardSSH(ctx, a.sshConfig, a.sshLocalPort, localUnixForwarding, remoteUnix, verbForward, false)
 		}
-		if err := a.processGuestAgentEvents(ctx, localUnix); err != nil {
+		if err := a.processGuestAgentEvents(ctx, localUnix, a.instSSHAddress); err != nil {
 			if !errors.Is(err, context.Canceled) {
 				logrus.WithError(err).Warn("connection to the guest agent was closed unexpectedly")
 			}
@@ -552,7 +552,7 @@ func (a *HostAgent) watchGuestAgentEvents(ctx context.Context) {
 	}
 }
 
-func isGuestAgentSocketAccessible(ctx context.Context, localUnix string) bool {
+func isGuestAgentSocketAccessible(ctx context.Context, localUnix, remote string) bool {
 	client, err := guestagentclient.NewGuestAgentClient(localUnix)
 	if err != nil {
 		return false
@@ -561,7 +561,7 @@ func isGuestAgentSocketAccessible(ctx context.Context, localUnix string) bool {
 	return err == nil
 }
 
-func (a *HostAgent) processGuestAgentEvents(ctx context.Context, localUnix string) error {
+func (a *HostAgent) processGuestAgentEvents(ctx context.Context, localUnix, remote string) error {
 	client, err := guestagentclient.NewGuestAgentClient(localUnix)
 	if err != nil {
 		return err

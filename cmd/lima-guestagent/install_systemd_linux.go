@@ -3,6 +3,7 @@ package main
 import (
 	_ "embed"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,12 +21,20 @@ func newInstallSystemdCommand() *cobra.Command {
 		RunE:  installSystemdAction,
 	}
 	installSystemdCommand.Flags().Bool("audit", true, "use audit features")
+	installSystemdCommand.Flags().Bool("tcp", false, "use tcp server")
 	return installSystemdCommand
 }
 
 func installSystemdAction(cmd *cobra.Command, args []string) error {
 	audit, err := cmd.Flags().GetBool("audit")
-	unit, err := generateSystemdUnit(audit)
+	if err != nil {
+		return err
+	}
+	tcp, err := cmd.Flags().GetBool("tcp")
+	if err != nil {
+		return err
+	}
+	unit, err := generateSystemdUnit(audit, tcp)
 	if err != nil {
 		return err
 	}
@@ -62,17 +71,14 @@ func installSystemdAction(cmd *cobra.Command, args []string) error {
 //go:embed lima-guestagent.TEMPLATE.service
 var systemdUnitTemplate string
 
-func generateSystemdUnit(audit bool) ([]byte, error) {
+func generateSystemdUnit(audit, tcp bool) ([]byte, error) {
 	selfExeAbs, err := os.Executable()
 	if err != nil {
 		return nil, err
 	}
 	m := map[string]string{
 		"Binary": selfExeAbs,
-		"Audit":  "True",
-	}
-	if !audit {
-		m["Audit"] = "False"
+		"Args":   fmt.Sprintf("--audit=%t --tcp=%t", audit, tcp),
 	}
 	return textutil.ExecuteTemplate(systemdUnitTemplate, m)
 }

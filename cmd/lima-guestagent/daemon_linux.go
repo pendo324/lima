@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -22,13 +23,21 @@ func newDaemonCommand() *cobra.Command {
 	}
 	daemonCommand.Flags().Duration("tick", 3*time.Second, "tick for polling events")
 	daemonCommand.Flags().Bool("audit", true, "use audit features")
+	daemonCommand.Flags().Bool("tcp", false, "use tcp server instead a UNIX socket")
 	return daemonCommand
 }
 
 func daemonAction(cmd *cobra.Command, _ []string) error {
 	socket := "/run/lima-guestagent.sock"
 	tick, err := cmd.Flags().GetDuration("tick")
+	if err != nil {
+		return err
+	}
 	audit, err := cmd.Flags().GetBool("audit")
+	if err != nil {
+		return err
+	}
+	tcp, err := cmd.Flags().GetBool("tcp")
 	if err != nil {
 		return err
 	}
@@ -62,13 +71,26 @@ func daemonAction(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	l, err := net.Listen("unix", socket)
-	if err != nil {
-		return err
+
+	var l net.Listener
+	listenPort := ":45645"
+	if tcp {
+		tcpL, err := net.Listen("tcp", listenPort)
+		if err != nil {
+			return err
+		}
+		l = tcpL
+		logrus.Infof("serving the guest agent at %d", listenPort)
+	} else {
+		socketL, err := net.Listen("unix", socket)
+		if err != nil {
+			return err
+		}
+		if err := os.Chmod(socket, 0777); err != nil {
+			return err
+		}
+		l = socketL
+		logrus.Infof("serving the guest agent on %q", socket)
 	}
-	if err := os.Chmod(socket, 0777); err != nil {
-		return err
-	}
-	logrus.Infof("serving the guest agent on %q", socket)
-	return srv.Serve(l)
+	return srv.Listen(l, nil)
 }
