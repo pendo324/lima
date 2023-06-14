@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os/exec"
 
+	"github.com/sirupsen/logrus"
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
 )
@@ -36,4 +38,16 @@ func FromUTF16leToString(r io.Reader) (string, error) {
 	}
 
 	return string(out), nil
+}
+
+func CannonicalWindowsPath(orig string) string {
+	newPath := orig
+	out, err := exec.Command("cygpath", "-u", orig).CombinedOutput()
+	if err != nil {
+		logrus.WithError(err).Errorf("failed to convert path to mingw, maybe not using Git ssh?")
+	} else {
+		logrus.Infof("cygpath output (for %s): %s", orig, string(out))
+		newPath = string(out)
+	}
+	return newPath
 }

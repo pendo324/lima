@@ -16,6 +16,7 @@ import (
 	"sync"
 
 	"github.com/coreos/go-semver/semver"
+	"github.com/lima-vm/lima/pkg/ioutilx"
 	"github.com/lima-vm/lima/pkg/lockutil"
 	"github.com/lima-vm/lima/pkg/osutil"
 	"github.com/lima-vm/lima/pkg/store/dirnames"
@@ -134,6 +135,9 @@ func CommonOpts(useDotSSH bool) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	if runtime.GOOS == "windows" {
+		privateKeyPath = ioutilx.CannonicalWindowsPath(privateKeyPath)
+	}
 	opts := []string{"IdentityFile=\"" + privateKeyPath + "\""}
 
 	// Append all private keys corresponding to ~/.ssh/*.pub to keep old instances working
@@ -215,6 +219,9 @@ func SSHOpts(instDir string, useDotSSH, forwardAgent bool, forwardX11 bool, forw
 	opts, err := CommonOpts(useDotSSH)
 	if err != nil {
 		return nil, err
+	}
+	if runtime.GOOS == "windows" {
+		controlSock = ioutilx.CannonicalWindowsPath(controlSock)
 	}
 	opts = append(opts,
 		fmt.Sprintf("User=%s", u.Username), // guest and host have the same username, but we should specify the username explicitly (#85)

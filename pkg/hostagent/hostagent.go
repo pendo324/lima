@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/lima-vm/lima/pkg/driver"
 	"github.com/lima-vm/lima/pkg/driverutil"
+	"github.com/lima-vm/lima/pkg/ioutilx"
 	"github.com/lima-vm/lima/pkg/networks"
 
 	"github.com/hashicorp/go-multierror"
@@ -509,6 +511,10 @@ func (a *HostAgent) watchGuestAgentEvents(ctx context.Context) {
 
 	localUnix := filepath.Join(a.instDir, filenames.GuestAgentSock)
 	remoteUnix := "/run/lima-guestagent.sock"
+
+	if runtime.GOOS == "windows" {
+		localUnix = ioutilx.CannonicalWindowsPath(localUnix)
+	}
 
 	a.onClose = append(a.onClose, func() error {
 		logrus.Debugf("Stop forwarding unix sockets")
