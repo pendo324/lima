@@ -510,10 +510,11 @@ func (a *HostAgent) watchGuestAgentEvents(ctx context.Context) {
 	}
 
 	localUnix := filepath.Join(a.instDir, filenames.GuestAgentSock)
+	localUnixForwarding := localUnix
 	remoteUnix := "/run/lima-guestagent.sock"
 
 	if runtime.GOOS == "windows" {
-		localUnix = ioutilx.CannonicalWindowsPath(localUnix)
+		localUnixForwarding = ioutilx.CannonicalWindowsPath(localUnix)
 	}
 
 	a.onClose = append(a.onClose, func() error {
@@ -528,7 +529,7 @@ func (a *HostAgent) watchGuestAgentEvents(ctx context.Context) {
 				}
 			}
 		}
-		if err := forwardSSH(context.Background(), a.sshConfig, a.sshLocalPort, localUnix, remoteUnix, verbCancel, false); err != nil {
+		if err := forwardSSH(context.Background(), a.sshConfig, a.sshLocalPort, localUnixForwarding, remoteUnix, verbCancel, false); err != nil {
 			mErr = multierror.Append(mErr, err)
 		}
 		return mErr
