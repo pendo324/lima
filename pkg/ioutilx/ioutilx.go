@@ -43,7 +43,7 @@ func FromUTF16leToString(r io.Reader) (string, error) {
 
 func CannonicalWindowsPath(orig string) string {
 	newPath := orig
-	out, err := exec.Command("cygpath", "-u", orig).CombinedOutput()
+	out, err := exec.Command("cygpath", "-m", orig).CombinedOutput()
 	if err != nil {
 		logrus.WithError(err).Errorf("failed to convert path to mingw, maybe not using Git ssh?")
 	} else {
