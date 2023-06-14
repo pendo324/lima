@@ -608,6 +608,7 @@ func forwardSSH(ctx context.Context, sshConfig *ssh.SSHConfig, port int, local, 
 		"127.0.0.1",
 		"--",
 	)
+	logrus.Infof("forwarding SSH with args: %v", args)
 	if strings.HasPrefix(local, "/") {
 		switch verb {
 		case verbForward:
@@ -638,6 +639,7 @@ func forwardSSH(ctx context.Context, sshConfig *ssh.SSHConfig, port int, local, 
 		}
 	}
 	cmd := exec.CommandContext(ctx, sshConfig.Binary(), args...)
+	logrus.Infof("running ssh forwarding command %v", cmd.String())
 	if out, err := cmd.Output(); err != nil {
 		if verb == verbForward && strings.HasPrefix(local, "/") {
 			logrus.WithError(err).Warnf("Failed to set up forward from %q (guest) to %q (host)", remote, local)
