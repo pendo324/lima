@@ -145,10 +145,7 @@ func Inspect(instName string) (*Instance, error) {
 				inst.Errors = append(inst.Errors, err)
 			}
 		}
-
-		return inst, nil
 	} else {
-
 		inst.CPUs = *y.CPUs
 		memory, err := units.RAMInBytes(*y.Memory)
 		if err == nil {
