@@ -101,42 +101,7 @@ func Inspect(instName string) (*Instance, error) {
 	inst.CPUType = y.CPUType[*y.Arch]
 	inst.SSHAddress = "127.0.0.1"
 	inst.SSHLocalPort = *y.SSH.LocalPort // maybe 0
-
-	if inst.VMType == limayaml.WSL {
-		inst.DistroName = fmt.Sprintf("%s-%s", "lima", inst.Name)
-		status, err := GetWslStatus(instName, inst.DistroName)
-		if err != nil {
-			inst.Status = StatusBroken
-			inst.Errors = append(inst.Errors, err)
-		} else {
-			inst.Status = status
-		}
-
-		if inst.Status == StatusStopped || inst.Status == StatusRunning {
-			sshAddr, err := GetSSHAddress(instName, inst.DistroName)
-			if err == nil {
-				inst.SSHAddress = sshAddr
-			} else {
-				inst.Errors = append(inst.Errors, err)
-			}
-		}
-
-		return inst, nil
-	}
-
-	inst.CPUs = *y.CPUs
-	memory, err := units.RAMInBytes(*y.Memory)
-	if err == nil {
-		inst.Memory = memory
-	}
-	disk, err := units.RAMInBytes(*y.Disk)
-	if err == nil {
-		inst.Disk = disk
-	}
-	inst.AdditionalDisks = y.AdditionalDisks
-	inst.Networks = y.Networks
 	inst.SSHConfigFile = filepath.Join(instDir, filenames.SSHConfig)
-
 	inst.HostAgentPID, err = ReadPIDFile(filepath.Join(instDir, filenames.HostAgentPID))
 	if err != nil {
 		inst.Status = StatusBroken
@@ -162,26 +127,60 @@ func Inspect(instName string) (*Instance, error) {
 		}
 	}
 
-	inst.DriverPID, err = ReadPIDFile(filepath.Join(instDir, filenames.PIDFile(*y.VMType)))
-	if err != nil {
-		inst.Status = StatusBroken
-		inst.Errors = append(inst.Errors, err)
-	}
-
-	if inst.Status == StatusUnknown {
-		if inst.HostAgentPID > 0 && inst.DriverPID > 0 {
-			inst.Status = StatusRunning
-		} else if inst.HostAgentPID == 0 && inst.DriverPID == 0 {
-			inst.Status = StatusStopped
-		} else if inst.HostAgentPID > 0 && inst.DriverPID == 0 {
-			inst.Errors = append(inst.Errors, errors.New("host agent is running but driver is not"))
+	if inst.VMType == limayaml.WSL {
+		inst.DistroName = fmt.Sprintf("%s-%s", "lima", inst.Name)
+		status, err := GetWslStatus(instName, inst.DistroName)
+		if err != nil {
 			inst.Status = StatusBroken
+			inst.Errors = append(inst.Errors, err)
 		} else {
-			inst.Errors = append(inst.Errors, fmt.Errorf("%s driver is running but host agent is not", inst.VMType))
+			inst.Status = status
+		}
+
+		if inst.Status == StatusStopped || inst.Status == StatusRunning {
+			sshAddr, err := GetSSHAddress(instName, inst.DistroName)
+			if err == nil {
+				inst.SSHAddress = sshAddr
+			} else {
+				inst.Errors = append(inst.Errors, err)
+			}
+		}
+
+		return inst, nil
+	} else {
+
+		inst.CPUs = *y.CPUs
+		memory, err := units.RAMInBytes(*y.Memory)
+		if err == nil {
+			inst.Memory = memory
+		}
+		disk, err := units.RAMInBytes(*y.Disk)
+		if err == nil {
+			inst.Disk = disk
+		}
+		inst.AdditionalDisks = y.AdditionalDisks
+		inst.Networks = y.Networks
+
+		inst.DriverPID, err = ReadPIDFile(filepath.Join(instDir, filenames.PIDFile(*y.VMType)))
+		if err != nil {
 			inst.Status = StatusBroken
+			inst.Errors = append(inst.Errors, err)
+		}
+
+		if inst.Status == StatusUnknown {
+			if inst.HostAgentPID > 0 && inst.DriverPID > 0 {
+				inst.Status = StatusRunning
+			} else if inst.HostAgentPID == 0 && inst.DriverPID == 0 {
+				inst.Status = StatusStopped
+			} else if inst.HostAgentPID > 0 && inst.DriverPID == 0 {
+				inst.Errors = append(inst.Errors, errors.New("host agent is running but driver is not"))
+				inst.Status = StatusBroken
+			} else {
+				inst.Errors = append(inst.Errors, fmt.Errorf("%s driver is running but host agent is not", inst.VMType))
+				inst.Status = StatusBroken
+			}
 		}
 	}
-
 	tmpl, err := template.New("format").Parse(y.Message)
 	if err != nil {
 		inst.Errors = append(inst.Errors, fmt.Errorf("message %q is not a valid template: %w", y.Message, err))
