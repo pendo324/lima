@@ -458,7 +458,7 @@ func GetSSHAddress(instName, distroName string) (string, error) {
 	// Expected output (whitespace preserved, [] for optional):
 	// PS > wsl -d <distroName> bash -c hostname -I | cut -d' ' -f1
 	// 168.1.1.1 ]10.0.0.1]
-	cmd := exec.Command("wsl.exe", "-d", distroName, "bash", "-c", "hostname", "-I", "|", "cut", "-d", "' '", "-f1")
+	cmd := exec.Command("wsl.exe", "-d", distroName, "bash", "-c", `"hostname -I | cut -d ' ' -f1"`)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		logrus.Debugf("outString: %s", out)
