@@ -30,12 +30,12 @@ func NewGuestAgentClient(remote string) (GuestAgentClient, error) {
 			Transport: &http.Transport{
 				DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 					var d net.Dialer
-					return d.DialContext(ctx, "tcp", fmt.Sprintf("%s:45645", remoteAddr))
+					return d.DialContext(ctx, "tcp", fmt.Sprintf("%s:45645", remote))
 				},
 			},
 		}
 	} else {
-		hcSock, err := httpclientutil.NewHTTPClientWithSocketPath(socketPath)
+		hcSock, err := httpclientutil.NewHTTPClientWithSocketPath(remote)
 		if err != nil {
 			return nil, err
 		}
