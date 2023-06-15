@@ -121,8 +121,8 @@ fi
 			description: "the guest agent to be running",
 			script: `#!/bin/bash
 set -eux -o pipefail
-check="nc -v -z -w 3 127.0.0.1 45645 &> /dev/null && echo true || echo false"
-if ! timeout 30s bash -c "until [ \"${check}\" ]; do sleep 3; done"; then
+check='curl -s -w "%{http_code}\n" -o /dev/null -L "127.0.0.1:45645/v1/info"'
+if ! timeout 30s bash -c "until [ eval $check -eq 200 ]; done"; then
 	echo >&2 "lima-guestagent is not installed yet"
 	exit 1
 fi
