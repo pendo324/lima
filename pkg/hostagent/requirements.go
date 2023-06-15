@@ -122,7 +122,7 @@ fi
 			script: `#!/bin/bash
 set -eux -o pipefail
 check='curl -s -w "%{http_code}\n" -o /dev/null -L "127.0.0.1:45645/v1/info"'
-if ! timeout 30s bash -c "until [ eval $check -eq 200 ]; done"; then
+if ! timeout 30s bash -c "until [ "$(eval $check)" -eq 200 ]; do sleep 3; done"; then
 	echo >&2 "lima-guestagent is not installed yet"
 	exit 1
 fi
