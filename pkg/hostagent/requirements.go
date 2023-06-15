@@ -149,7 +149,7 @@ Make sure that you are using an officially supported image.
 Also see "/var/log/cloud-init-output.log" in the guest.
 A possible workaround is to run "lima-guestagent install-systemd" in the guest.
 `,
-
+		})
 	}
 	return req
 }
