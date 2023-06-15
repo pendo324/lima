@@ -70,17 +70,17 @@ func (pf *portForwarder) forwardingAddresses(guest api.IPPort) (string, string) 
 }
 
 func (pf *portForwarder) OnEvent(ctx context.Context, ev api.Event, vmType string) {
+	tcpForwarder := forwardTCP
+	if vmType == limayaml.WSL {
+		tcpForwarder = forwardTCPWsl
+	}
+
 	for _, f := range ev.LocalPortsRemoved {
 		local, remote := pf.forwardingAddresses(f)
 		if local == "" {
 			continue
 		}
 		logrus.Infof("Stopping forwarding TCP from %s to %s", remote, local)
-
-		tcpForwarder := forwardTCP
-		// if vmType == limayaml.WSL {
-		// 	tcpForwarder = forwardTCPWsl
-		// }
 
 		if err := tcpForwarder(ctx, pf.sshConfig, pf.sshHostPort, local, remote, verbCancel); err != nil {
 			logrus.WithError(err).Warnf("failed to stop forwarding tcp port %d", f.Port)
@@ -93,7 +93,7 @@ func (pf *portForwarder) OnEvent(ctx context.Context, ev api.Event, vmType strin
 			continue
 		}
 		logrus.Infof("Forwarding TCP from %s to %s", remote, local)
-		if err := forwardTCP(ctx, pf.sshConfig, pf.sshHostPort, local, remote, verbForward); err != nil {
+		if err := tcpForwarder(ctx, pf.sshConfig, pf.sshHostPort, local, remote, verbForward); err != nil {
 			logrus.WithError(err).Warnf("failed to set up forwarding tcp port %d (negligible if already forwarded)", f.Port)
 		}
 	}
