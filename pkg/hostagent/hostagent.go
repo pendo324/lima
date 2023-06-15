@@ -515,7 +515,7 @@ func (a *HostAgent) watchGuestAgentEvents(ctx context.Context) {
 
 	if runtime.GOOS == "windows" {
 		localUnixForwarding = ioutilx.CannonicalWindowsPath(localUnix)
-		localUnix = "127.0.0.1:45645"
+		localUnix = fmt.Sprintf("%s:45645", a.instSSHAddress)
 	}
 
 	a.onClose = append(a.onClose, func() error {
@@ -538,7 +538,9 @@ func (a *HostAgent) watchGuestAgentEvents(ctx context.Context) {
 
 	for {
 		if !isGuestAgentSocketAccessible(ctx, localUnix) {
-			_ = forwardSSH(ctx, a.sshConfig, a.sshLocalPort, localUnixForwarding, remoteUnix, verbForward, false)
+			if runtime.GOOS != "windows" {
+				_ = forwardSSH(ctx, a.sshConfig, a.sshLocalPort, localUnixForwarding, remoteUnix, verbForward, false)
+			}
 		}
 		if err := a.processGuestAgentEvents(ctx, localUnix); err != nil {
 			if !errors.Is(err, context.Canceled) {
