@@ -30,7 +30,7 @@ func NewGuestAgentClient(remote string) (GuestAgentClient, error) {
 			Transport: &http.Transport{
 				DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 					var d net.Dialer
-					return d.DialContext(ctx, "tcp", fmt.Sprintf("%s:45645", remote))
+					return d.DialContext(ctx, "tcp", remote)
 				},
 			},
 		}
