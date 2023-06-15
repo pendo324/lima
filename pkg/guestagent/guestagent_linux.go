@@ -41,7 +41,7 @@ func New(newTicker func() (<-chan time.Time, func()), iptablesIdle time.Duration
 
 		go a.setWorthCheckingIPTablesRoutine(auditClient, iptablesIdle)
 	} else {
-		go a.setWorthCheckingIPTablesNoAuditRoutine(3 * time.Second)
+		a.worthCheckingIPTables = true
 	}
 	go a.kubernetesServiceWatcher.Start()
 	go a.fixSystemTimeSkew()
@@ -96,21 +96,6 @@ func (a *agent) setWorthCheckingIPTablesRoutine(auditClient *libaudit.AuditClien
 			a.worthCheckingIPTablesMu.Unlock()
 		}
 	}
-}
-
-func (a *agent) setWorthCheckingIPTablesNoAuditRoutine(pollTime time.Duration) {
-	go func() {
-		for {
-			time.Sleep(pollTime)
-			a.worthCheckingIPTablesMu.Lock()
-
-			logrus.Debug("setWorthCheckingIPTablesRoutine(): setting to true by polling")
-			a.worthCheckingIPTables = true
-			latestTrue = time.Now()
-
-			a.worthCheckingIPTablesMu.Unlock()
-		}
-	}()
 }
 
 type eventState struct {
