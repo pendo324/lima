@@ -45,7 +45,6 @@ type HostAgent struct {
 	tcpDNSLocalPort int
 	instDir         string
 	instName        string
-	instSSHAddress  string
 	sshConfig       *ssh.SSHConfig
 	portForwarder   *portForwarder
 	onClose         []func() error // LIFO
@@ -149,7 +148,6 @@ func New(instName string, stdout io.Writer, sigintCh chan os.Signal, opts ...Opt
 		tcpDNSLocalPort: tcpDNSLocalPort,
 		instDir:         inst.Dir,
 		instName:        instName,
-		instSSHAddress:  inst.SSHAddress,
 		sshConfig:       sshConfig,
 		portForwarder:   newPortForwarder(sshConfig, sshLocalPort, rules),
 		driver:          limaDriver,
@@ -515,7 +513,13 @@ func (a *HostAgent) watchGuestAgentEvents(ctx context.Context) {
 
 	if runtime.GOOS == "windows" {
 		localUnixForwarding = ioutilx.CannonicalWindowsPath(localUnix)
-		localUnix = fmt.Sprintf("%s:45645", a.instSSHAddress)
+		instSSHAddress, err := store.GetSSHAddress(a.instName, fmt.Sprintf("lima-%s", a.instName))
+		if err == nil {
+			localUnix = fmt.Sprintf("%s:45645", instSSHAddress)
+		} else {
+			logrus.WithError(err).Errorf("failed to get WSL SSH Address")
+			localUnix = fmt.Sprintf("127.0.0.1:45645")
+		}
 	}
 
 	a.onClose = append(a.onClose, func() error {
