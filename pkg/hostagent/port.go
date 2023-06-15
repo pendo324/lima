@@ -78,9 +78,9 @@ func (pf *portForwarder) OnEvent(ctx context.Context, ev api.Event, vmType strin
 		logrus.Infof("Stopping forwarding TCP from %s to %s", remote, local)
 
 		tcpForwarder := forwardTCP
-		if vmType == limayaml.WSL {
-			tcpForwarder = forwardTCPWsl
-		}
+		// if vmType == limayaml.WSL {
+		// 	tcpForwarder = forwardTCPWsl
+		// }
 
 		if err := tcpForwarder(ctx, pf.sshConfig, pf.sshHostPort, local, remote, verbCancel); err != nil {
 			logrus.WithError(err).Warnf("failed to stop forwarding tcp port %d", f.Port)
