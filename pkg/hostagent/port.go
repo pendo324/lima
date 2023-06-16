@@ -43,9 +43,9 @@ func hostAddress(rule limayaml.PortForward, guest api.IPPort) string {
 	return host.String()
 }
 
-func (pf *portForwarder) forwardingAddresses(guest api.IPPort, localUnix api.IPPort) (string, string) {
+func (pf *portForwarder) forwardingAddresses(guest api.IPPort, localUnixIP net.IP) (string, string) {
 	if runtime.GOOS == "windows" {
-		guest = localUnix
+		guest.IP = localUnixIP
 	}
 	for _, rule := range pf.rules {
 		if rule.GuestSocket != "" {
@@ -81,25 +81,19 @@ func (pf *portForwarder) OnEvent(ctx context.Context, ev api.Event, vmType, inst
 		tcpForwarder = forwardTCPWsl
 	}
 
-	localUnix := api.IPPort{
-		IP:   net.ParseIP("127.0.0.1"),
-		Port: 45645,
-	}
+	localUnixIP := net.ParseIP("127.0.0.1")
 	if runtime.GOOS == "windows" {
 		// localUnixForwarding = ioutilx.CannonicalWindowsPath(localUnix)
 		instSSHAddress, err := store.GetSSHAddress(instName, fmt.Sprintf("lima-%s", instName))
 		if err == nil {
-			localUnix = api.IPPort{
-				IP:   net.ParseIP(instSSHAddress),
-				Port: 45645,
-			}
+			localUnixIP = net.ParseIP(instSSHAddress)
 		} else {
 			logrus.WithError(err).Errorf("failed to get WSL SSH Address")
 		}
 	}
 
 	for _, f := range ev.LocalPortsRemoved {
-		local, remote := pf.forwardingAddresses(f, localUnix)
+		local, remote := pf.forwardingAddresses(f, localUnixIP)
 		if local == "" {
 			continue
 		}
@@ -110,7 +104,7 @@ func (pf *portForwarder) OnEvent(ctx context.Context, ev api.Event, vmType, inst
 		}
 	}
 	for _, f := range ev.LocalPortsAdded {
-		local, remote := pf.forwardingAddresses(f, localUnix)
+		local, remote := pf.forwardingAddresses(f, localUnixIP)
 		if local == "" {
 			logrus.Infof("Not forwarding TCP %s", remote)
 			continue
