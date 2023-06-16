@@ -19,7 +19,6 @@ import (
 
 	"github.com/lima-vm/lima/pkg/driver"
 	"github.com/lima-vm/lima/pkg/driverutil"
-	"github.com/lima-vm/lima/pkg/ioutilx"
 	"github.com/lima-vm/lima/pkg/networks"
 
 	"github.com/hashicorp/go-multierror"
@@ -498,27 +497,27 @@ func (a *HostAgent) close() error {
 func (a *HostAgent) watchGuestAgentEvents(ctx context.Context) {
 	// TODO: use vSock (when QEMU for macOS gets support for vSock)
 
-	// Setup all socket forwards and defer their teardown
-	logrus.Debugf("Forwarding unix sockets")
-	for _, rule := range a.y.PortForwards {
-		if rule.GuestSocket != "" {
-			local := hostAddress(rule, guestagentapi.IPPort{})
-			_ = forwardSSH(ctx, a.sshConfig, a.sshLocalPort, local, rule.GuestSocket, verbForward, rule.Reverse)
-		}
-	}
-
 	localUnix := filepath.Join(a.instDir, filenames.GuestAgentSock)
-	localUnixForwarding := localUnix
+	// localUnixForwarding := localUnix
 	remoteUnix := "/run/lima-guestagent.sock"
 
 	if runtime.GOOS == "windows" {
-		localUnixForwarding = ioutilx.CannonicalWindowsPath(localUnix)
+		// localUnixForwarding = ioutilx.CannonicalWindowsPath(localUnix)
 		instSSHAddress, err := store.GetSSHAddress(a.instName, fmt.Sprintf("lima-%s", a.instName))
 		if err == nil {
 			localUnix = fmt.Sprintf("%s:45645", instSSHAddress)
 		} else {
 			logrus.WithError(err).Errorf("failed to get WSL SSH Address")
 			localUnix = fmt.Sprintf("127.0.0.1:45645")
+		}
+	}
+
+	// Setup all socket forwards and defer their teardown
+	logrus.Debugf("Forwarding unix sockets")
+	for _, rule := range a.y.PortForwards {
+		if rule.GuestSocket != "" {
+			local := hostAddress(rule, guestagentapi.IPPort{})
+			_ = forwardSSH(ctx, a.sshConfig, a.sshLocalPort, local, localUnix, verbForward, rule.Reverse)
 		}
 	}
 
@@ -529,12 +528,12 @@ func (a *HostAgent) watchGuestAgentEvents(ctx context.Context) {
 			if rule.GuestSocket != "" {
 				local := hostAddress(rule, guestagentapi.IPPort{})
 				// using ctx.Background() because ctx has already been cancelled
-				if err := forwardSSH(context.Background(), a.sshConfig, a.sshLocalPort, local, rule.GuestSocket, verbCancel, rule.Reverse); err != nil {
+				if err := forwardSSH(context.Background(), a.sshConfig, a.sshLocalPort, local, localUnix, verbCancel, rule.Reverse); err != nil {
 					mErr = multierror.Append(mErr, err)
 				}
 			}
 		}
-		if err := forwardSSH(context.Background(), a.sshConfig, a.sshLocalPort, localUnixForwarding, remoteUnix, verbCancel, false); err != nil {
+		if err := forwardSSH(context.Background(), a.sshConfig, a.sshLocalPort, localUnix, remoteUnix, verbCancel, false); err != nil {
 			mErr = multierror.Append(mErr, err)
 		}
 		return mErr
@@ -543,7 +542,7 @@ func (a *HostAgent) watchGuestAgentEvents(ctx context.Context) {
 	for {
 		if !isGuestAgentSocketAccessible(ctx, localUnix) {
 			if runtime.GOOS != "windows" {
-				_ = forwardSSH(ctx, a.sshConfig, a.sshLocalPort, localUnixForwarding, remoteUnix, verbForward, false)
+				_ = forwardSSH(ctx, a.sshConfig, a.sshLocalPort, localUnix, remoteUnix, verbForward, false)
 			}
 		}
 		if err := a.processGuestAgentEvents(ctx, localUnix); err != nil {
