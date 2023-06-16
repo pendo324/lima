@@ -46,6 +46,11 @@ func hostAddress(rule limayaml.PortForward, guest api.IPPort) string {
 func (pf *portForwarder) forwardingAddresses(guest api.IPPort, localUnixIP net.IP) (string, string) {
 	if runtime.GOOS == "windows" {
 		guest.IP = localUnixIP
+		host := api.IPPort{
+			IP:   net.ParseIP("127.0.0.1"),
+			Port: guest.Port,
+		}
+		return host.String(), guest.String()
 	}
 	for _, rule := range pf.rules {
 		if rule.GuestSocket != "" {
