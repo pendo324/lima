@@ -202,6 +202,8 @@ func (a *agent) LocalPorts(_ context.Context) ([]api.IPPort, error) {
 		}
 	}
 
+	logrus.Debugf("res from procnettcp: %v", res)
+
 	a.worthCheckingIPTablesMu.RLock()
 	worthCheckingIPTables := a.worthCheckingIPTables
 	a.worthCheckingIPTablesMu.RUnlock()
@@ -222,6 +224,8 @@ func (a *agent) LocalPorts(_ context.Context) ([]api.IPPort, error) {
 		a.latestIPTablesMu.RUnlock()
 	}
 
+	logrus.Debugf("latest iptables: %v", ipts)
+
 	for _, ipt := range ipts {
 		// Make sure the port isn't already listed from procnettcp
 		found := false
@@ -238,6 +242,8 @@ func (a *agent) LocalPorts(_ context.Context) ([]api.IPPort, error) {
 				})
 		}
 	}
+
+	logrus.Debugf("res after applying latest iptables: %v", res)
 
 	kubernetesEntries := a.kubernetesServiceWatcher.GetPorts()
 	for _, entry := range kubernetesEntries {
@@ -256,6 +262,8 @@ func (a *agent) LocalPorts(_ context.Context) ([]api.IPPort, error) {
 				})
 		}
 	}
+
+	logrus.Debugf("res after applying kubernetes: %v", res)
 
 	return res, nil
 }
