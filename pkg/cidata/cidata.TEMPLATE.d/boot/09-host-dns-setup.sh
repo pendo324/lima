@@ -6,6 +6,14 @@ readonly chain=LIMADNS
 chain_exists() {
 	iptables --table nat -n --list "${chain}" >/dev/null 2>&1
 }
+netns="$(ip netns identify $$)"
+
+echo "netns: $netns"
+if [ "$LIMA_VMTYPE" = "wsl" ] && [ "$netns" != "lima-$LIMA_CIDATA_NAME" ]; then
+	echo "restarting script in 'lima-$LIMA_CIDATA_NAME' network namespace"
+	ip netns add lima-wsl
+	sudo nsenter --net=/var/run/netns/lima-wsl ./$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+fi
 
 # Wait until iptables has been installed; 35-configure-packages.sh will call this script again
 if command -v iptables >/dev/null 2>&1; then
