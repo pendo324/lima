@@ -12,7 +12,7 @@ echo "netns: $netns"
 if [ "$LIMA_VMTYPE" = "wsl" ] && [ "$netns" != "lima-$LIMA_CIDATA_NAME" ]; then
 	echo "restarting script in 'lima-$LIMA_CIDATA_NAME' network namespace"
 	ip netns add lima-wsl
-	nsenter --net=/var/run/netns/lima-wsl $0 && exit
+	nsenter --net=/var/run/netns/lima-wsl $0
 fi
 
 # Wait until iptables has been installed; 35-configure-packages.sh will call this script again
