@@ -11,7 +11,7 @@ netns="$(ip netns identify $$)"
 if [ "$LIMA_VMTYPE" = "wsl" ] && [ "$netns" != "lima-$LIMA_CIDATA_NAME" ]; then
 	echo "restarting script in 'lima-$LIMA_CIDATA_NAME' network namespace"
 	ip netns add lima-wsl
-	exec (nsenter --net=/var/run/netns/lima-wsl "$0") && exit
+	exec nsenter --net=/var/run/netns/lima-wsl "$0"
 fi
 
 echo "after namespace shenanigans"
