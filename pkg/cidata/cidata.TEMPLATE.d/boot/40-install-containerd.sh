@@ -55,6 +55,10 @@ EOF
   namespace = "${CONTAINERD_NAMESPACE}"
   snapshotter = "${CONTAINERD_SNAPSHOTTER}"
 EOF
+
+	# Add NetworkNamespacePath=/var/run/netns/lima-wsl to the end of the [Unit] section of the containerd service
+	sed -i'' '/^\[Unit\]/!b;:a;n;/./ba;iNetworkNamespacePath=/var/run/netns/lima-wsl' /lib/systemd/system/containerd.service
+
 	systemctl enable --now containerd buildkit stargz-snapshotter
 fi
 
