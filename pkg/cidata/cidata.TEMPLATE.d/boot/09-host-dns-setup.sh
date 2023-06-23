@@ -9,7 +9,7 @@ chain_exists() {
 
 netns="$(ip netns identify $$)"
 
-if [ "$LIMA_VMTYPE" = "wsl" ]; then
+if [ "$LIMA_VMTYPE" = "wsl" ] && [ ! -f "/var/run/netns/lima-wsl" ]; then
 	ip netns delete lima-wsl || true
 
 	ip netns add lima-wsl
