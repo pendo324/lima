@@ -33,13 +33,24 @@ write_files:
       LIMA_CIDATA_MNT="/mnt/lima-cidata"
       LIMA_CIDATA_DEV="/dev/disk/by-label/cidata"
       mkdir -p -m 700 "${LIMA_CIDATA_MNT}"
+      export LIMA_CIDATA_MNT
       {{ if eq .VMType "wsl" }}
       chmod +x /mnt/lima-cidata/boot/*.sh
+      ip netns add lima-wsl
+      ip link add veth-default type veth peer name veth-lima-wsl
+      ip link set veth-lima-wsl netns lima-wsl
+      ip addr add 10.0.3.1/24 dev veth-default
+      ip netns exec lima-wsl ip addr add 10.0.3.2/24 dev veth-lima-wsl
+      ip link set veth-default up
+      ip netns exec lima-wsl ip link set veth-lima-wsl up
+      iptables -A FORWARD -o eth0 -i veth-default -j ACCEPT
+      iptables -A FORWARD -i eth0 -o veth-default -j ACCEPT
+      iptables -t nat -A POSTROUTING -s 10.0.3.2/24 -o eth0 -j MASQUERADE
+      nsenter --net=/var/run/netns/lima-wsl "${LIMA_CIDATA_MNT}"/boot.sh
       {{ else }}
       mount -o ro,mode=0700,dmode=0700,overriderockperm,exec,uid=0 "${LIMA_CIDATA_DEV}" "${LIMA_CIDATA_MNT}"
-      {{ end }}
-      export LIMA_CIDATA_MNT
       exec "${LIMA_CIDATA_MNT}"/boot.sh
+      {{ end }}
    owner: root:root
    path: /var/lib/cloud/scripts/per-boot/00-lima.boot.sh
    permissions: '0755'
