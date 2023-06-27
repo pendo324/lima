@@ -16,8 +16,12 @@ vmType: wsl
 # 🔵 This file: Ubuntu 23.04 Lunar Lobster images
 images:
 # Try to use release-yyyyMMdd image if available. Note that release-yyyyMMdd will be removed after several months.
-- location: "https://github.com/fedora-cloud/docker-brew-fedora/raw/38/x86_64/fedora-38-x86_64.tar.xz"
+- location: "file://C:/Users/Administrator/Downloads/fedora-38-cloud-rootfs.tar"
   arch: "x86_64"
-  digest: "sha256:d31a6872886b148ba9207b8b2e7c9981e6b27c950ec96048e19626eee09d0529"
+  digest: "sha256:112400224d801c3781c1e301408685920ba980024bfb20877628a0bd82fdc574"
 
 mountType: wsl
+
+containerd:
+  system: true
+  user: false
