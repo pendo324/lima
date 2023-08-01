@@ -110,65 +110,18 @@ func supportsWsl2() error {
 }
 
 func attachDisks(driver *driver.BaseDriver) error {
-	ciDataPath := filepath.Join(driver.Instance.Dir, filenames.CIDataISO)
+	ciDataPath := filepath.Join(driver.Instance.Dir, filenames.CIDataISODir)
 
-	logrus.Infof("Attaching cidata...")
-	logrus.Infof("creating cidata dir in distro %s...", driver.Instance.DistroName)
-	out, err := wslCommand("-d", driver.Instance.DistroName, "mkdir", "/mnt/lima-cidata")
-	if err != nil {
-		return fmt.Errorf("failed to create mount path in VM %s: %w", driver.Instance.Name, err)
-	}
-	logrus.Infof("output of mkdir: %s", out)
-	logrus.Infof("adding systemd service %s...", driver.Instance.DistroName)
-	limaCIDataIsoPath := "${TMPDIR:-${TEMP:-${TMP:-/tmp}}}/lima-cidata-iso"
-	out, err = wslCommand("-d", driver.Instance.DistroName, "bash", "-c", fmt.Sprintf(`<<EOF cat >> /etc/systemd/system/lima-disk-mount.service
-[Unit]
-Description=Create lima mounts
-After=systemd-remount-fs.service
-[Service]
-Type=oneshot
-ExecStart=mount --make-shared /mnt/c/
-ExecStart=mkdir -p %s
-ExecStart=mount -t iso9660 $(/usr/bin/wslpath '%s') %s
-ExecStart=mkdir -p -m 700 /mnt/lima-cidata
-ExecStart=cp -r %s/. /mnt/lima-cidata
-ExecStart=chmod +x /mnt/lima-cidata/boot.sh
-RemainAfterExit=yes
-TimeoutSec=0
-StandardOutput=journal+console
-[Install]
-WantedBy=multi-user.target
-EOF
-`, limaCIDataIsoPath, ciDataPath, limaCIDataIsoPath, limaCIDataIsoPath))
-	if err != nil {
-		return fmt.Errorf("failed to write systemd service in VM %s: %w", driver.Instance.Name, err)
-	}
-	logrus.Infof("output of write systemd service: %s", out)
-	out, err = wslCommand("-d", driver.Instance.DistroName, "systemctl", "enable", "--now", "lima-disk-mount")
-	if err != nil {
-		return fmt.Errorf("failed to enable lima-disk-mount service in VM %s: %w", driver.Instance.Name, err)
-	}
-	logrus.Infof("output of systemctl enable --now lima-disk-mount: %s", out)
-	out, err = wslCommand("-d", driver.Instance.DistroName, "/usr/lib/cloud-init/ds-identify", "--force")
-	if err != nil {
-		return fmt.Errorf("failed to re-run ds-identify in VM %s: %w", driver.Instance.Name, err)
-	}
-	logrus.Infof("output of ds-identify: %s", out)
-	out, err = wslCommand("-d", driver.Instance.DistroName, "systemctl", "restart", "cloud-init")
-	if err != nil {
-		return fmt.Errorf("failed to restart cloud-init in VM %s: %w", driver.Instance.Name, err)
-	}
-	logrus.Infof("output of cloud-init: %s", out)
-	out, err = wslCommand("-d", driver.Instance.DistroName, "systemctl", "restart", "cloud-final")
-	if err != nil {
-		return fmt.Errorf("failed to restart cloud-final in VM %s: %w", driver.Instance.Name, err)
-	}
-	logrus.Infof("output of cloud-final: %s", out)
-	// _, err = wslCommand("-d", driver.Instance.DistroName, "mount", "-t", "iso9660", ciDataPath, "/mnt/lima-cidata")
-	// if err != nil {
-	// 	return fmt.Errorf("failed to create mount path in VM %s: %w", driver.Instance.Name, err)
-	// }
-	// logrus.Infof("output of mount: %s", out)
-	logrus.Infof("cidata mounted!")
-	return nil
+	out, err := wslCommand(
+		"-d",
+		driver.Instance.DistroName,
+		"bash",
+		"-c",
+		fmt.Sprintf(`
+export LIMA_CIDATA_MNT=$(/usr/bin/wslpath '%s')
+exec $(/usr/bin/wslpath '%s/boot.sh')`,
+			ciDataPath, ciDataPath))
+
+	logrus.Infof("Output from command to run boot.sh: %s", out)
+	return fmt.Errorf("error running wslCommand that executes boot.sh: %w", err)
 }

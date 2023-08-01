@@ -7,22 +7,23 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/lima-vm/lima/pkg/networks"
-
 	"github.com/docker/go-units"
 	"github.com/lima-vm/lima/pkg/iso9660util"
 	"github.com/lima-vm/lima/pkg/limayaml"
 	"github.com/lima-vm/lima/pkg/localpathutil"
+	"github.com/lima-vm/lima/pkg/networks"
 	"github.com/lima-vm/lima/pkg/osutil"
 	"github.com/lima-vm/lima/pkg/sshutil"
 	"github.com/lima-vm/lima/pkg/store/filenames"
 	"github.com/lima-vm/lima/pkg/usrlocalsharelima"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/exp/slices"
 )
 
 var netLookupIP = func(host string) []net.IP {
@@ -328,6 +329,10 @@ func GenerateISO9660(instDir, name string, y *limayaml.LimaYAML, udpDNSLocalPort
 		})
 	}
 
+	if args.VMType == limayaml.WSL {
+		return writeCIDataDir(filepath.Join(instDir, filenames.CIDataISODir), layout)
+	}
+
 	return iso9660util.Write(filepath.Join(instDir, filenames.CIDataISO), "cidata", layout)
 }
 
@@ -374,4 +379,36 @@ func getBootCmds(p []limayaml.Provision) []BootCmds {
 
 func diskDeviceNameFromOrder(order int) string {
 	return fmt.Sprintf("vd%c", int('b')+order)
+}
+
+func writeCIDataDir(rootPath string, layout []iso9660util.Entry) error {
+	slices.SortFunc(layout, func(a, b iso9660util.Entry) int {
+		return strings.Compare(strings.ToLower(a.Path), strings.ToLower(b.Path))
+	})
+
+	if err := os.RemoveAll(rootPath); err != nil {
+		return err
+	}
+
+	if err := os.Mkdir(rootPath, 0700); err != nil {
+		return err
+	}
+
+	for _, e := range layout {
+		if dir := path.Dir(e.Path); dir != "" && dir != "/" {
+			if err := os.Mkdir(dir, 0700); err != nil {
+				return err
+			}
+		}
+		f, err := os.OpenFile(e.Path, os.O_CREATE|os.O_RDWR, 0700)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		if _, err := io.Copy(f, e.Reader); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
