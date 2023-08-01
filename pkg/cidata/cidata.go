@@ -390,9 +390,7 @@ func writeCIDataDir(rootPath string, layout []iso9660util.Entry) error {
 		return err
 	}
 
-	if err := os.Mkdir(rootPath, 0700); err != nil {
-		return err
-	}
+	logrus.Infof("layout: %v\n", layout)
 
 	for _, e := range layout {
 		if dir := path.Dir(e.Path); dir != "" && dir != "/" {
