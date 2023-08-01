@@ -330,6 +330,10 @@ func GenerateISO9660(instDir, name string, y *limayaml.LimaYAML, udpDNSLocalPort
 	}
 
 	if args.VMType == limayaml.WSL {
+		layout = append(layout, iso9660util.Entry{
+			Path:   "ssh_authorized_keys",
+			Reader: strings.NewReader(strings.Join(args.SSHPubKeys, "\n")),
+		})
 		return writeCIDataDir(filepath.Join(instDir, filenames.CIDataISODir), layout)
 	}
 
