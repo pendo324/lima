@@ -2,6 +2,7 @@ package wsl
 
 import (
 	"fmt"
+	"io"
 	"os/exec"
 	"path"
 	"path/filepath"
@@ -13,7 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func wslCommand(args ...string) (string, error) {
+func wslCommand(utf16le bool, args ...string) (string, error) {
 	cmd := exec.Command("wsl.exe", args...)
 	out, err := cmd.StdoutPipe()
 	if err != nil {
@@ -21,6 +22,13 @@ func wslCommand(args ...string) (string, error) {
 	}
 	if err := cmd.Start(); err != nil {
 		return "", err
+	}
+	if !utf16le {
+		b, err := io.ReadAll(out)
+		if err != nil {
+			return "", err
+		}
+		return string(b), nil
 	}
 	outString, err := ioutilx.FromUTF16leToString(out)
 	if err != nil {
@@ -48,7 +56,7 @@ func powershellCommand(args ...string) (string, error) {
 // startVM calls WSL to start a VM.
 // Takes argument for VM name.
 func startVM(name string) error {
-	_, err := wslCommand("--distribution", "lima-"+name)
+	_, err := wslCommand(true, "--distribution", "lima-"+name)
 	if err != nil {
 		return err
 	}
@@ -58,7 +66,7 @@ func startVM(name string) error {
 // initVM calls WSL to import a new VM specifically for Lima.
 func initVM(name, instanceDir string) error {
 	logrus.Infof("Importing distro from %q to %q", path.Join(instanceDir, filenames.WslRootFsDir), path.Join(instanceDir, filenames.WslRootFs))
-	_, err := wslCommand("--import", "lima-"+name, path.Join(instanceDir, filenames.WslRootFsDir), path.Join(instanceDir, filenames.WslRootFs))
+	_, err := wslCommand(true, "--import", "lima-"+name, path.Join(instanceDir, filenames.WslRootFsDir), path.Join(instanceDir, filenames.WslRootFs))
 	if err != nil {
 		return err
 	}
@@ -68,7 +76,7 @@ func initVM(name, instanceDir string) error {
 // stopVM calls WSL to stop a running VM.
 // Takes arguments for name.
 func stopVM(name string) error {
-	_, err := wslCommand("--terminate", "lima-"+name)
+	_, err := wslCommand(true, "--terminate", "lima-"+name)
 	if err != nil {
 		return err
 	}
@@ -113,6 +121,7 @@ func attachDisks(driver *driver.BaseDriver) error {
 	ciDataPath := filepath.Join(driver.Instance.Dir, filenames.CIDataISODir)
 
 	out, err := wslCommand(
+		false,
 		"-d",
 		driver.Instance.DistroName,
 		"bash",
@@ -123,5 +132,8 @@ exec $(/usr/bin/wslpath '%s/boot.sh')`,
 			ciDataPath, ciDataPath))
 
 	logrus.Infof("Output from command to run boot.sh: %s", out)
-	return fmt.Errorf("error running wslCommand that executes boot.sh: %w", err)
+	if err != nil {
+		return fmt.Errorf("error running wslCommand that executes boot.sh: %w", err)
+	}
+	return nil
 }
