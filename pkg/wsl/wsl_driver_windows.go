@@ -1,3 +1,6 @@
+//go:build windows
+// +build windows
+
 package wsl
 
 import (
@@ -144,7 +147,7 @@ func (l *LimaWslDriver) Start(ctx context.Context) (chan error, error) {
 	return nil, nil
 }
 
-// Requires WSLG, which requires specific version of WSL2 to be installed.
+// Requires WSLg, which requires specific version of WSL2 to be installed.
 // TODO: Add check.
 func (l *LimaWslDriver) CanRunGUI() bool {
 	// return *l.Yaml.Video.Display == "wsl"
@@ -152,9 +155,6 @@ func (l *LimaWslDriver) CanRunGUI() bool {
 }
 
 func (l *LimaWslDriver) RunGUI() error {
-	if l.CanRunGUI() {
-		// return l.machine.StartGraphicApplication(1920, 1200)
-	}
 	return fmt.Errorf("RunGUI is not support for the given driver '%s' and diplay '%s'", "wsl", *l.Yaml.Video.Display)
 }
 

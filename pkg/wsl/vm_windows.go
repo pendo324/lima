@@ -1,62 +1,25 @@
+//go:build windows
+// +build windows
+
 package wsl
 
 import (
 	"fmt"
-	"io"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"strconv"
 
 	"github.com/lima-vm/lima/pkg/driver"
-	"github.com/lima-vm/lima/pkg/ioutilx"
+	"github.com/lima-vm/lima/pkg/executil"
 	"github.com/lima-vm/lima/pkg/store/filenames"
 	"github.com/sirupsen/logrus"
 )
 
-func wslCommand(utf16le bool, args ...string) (string, error) {
-	cmd := exec.Command("wsl.exe", args...)
-	out, err := cmd.StdoutPipe()
-	if err != nil {
-		return "", err
-	}
-	if err := cmd.Start(); err != nil {
-		return "", err
-	}
-	if !utf16le {
-		b, err := io.ReadAll(out)
-		if err != nil {
-			return "", err
-		}
-		return string(b), nil
-	}
-	outString, err := ioutilx.FromUTF16leToString(out)
-	if err != nil {
-		return "", fmt.Errorf("failed to convert output from UTF16 when running wsl command wsl.exe %v, err: %w", args, err)
-	}
-	return outString, nil
-}
-
-func powershellCommand(args ...string) (string, error) {
-	cmd := exec.Command("powershell.exe", args...)
-	out, err := cmd.StdoutPipe()
-	if err != nil {
-		return "", err
-	}
-	if err := cmd.Start(); err != nil {
-		return "", err
-	}
-	outString, err := ioutilx.FromUTF16leToString(out)
-	if err != nil {
-		return "", fmt.Errorf("failed to convert output from UTF16 when running powershell command powershell.exe %v, err: %w", args, err)
-	}
-	return outString, nil
-}
-
 // startVM calls WSL to start a VM.
 // Takes argument for VM name.
 func startVM(name string) error {
-	_, err := wslCommand(true, "--distribution", "lima-"+name)
+	_, err := executil.RunUTF16leCommand("wsl.exe", "--distribution", "lima-"+name)
 	if err != nil {
 		return err
 	}
@@ -66,7 +29,7 @@ func startVM(name string) error {
 // initVM calls WSL to import a new VM specifically for Lima.
 func initVM(name, instanceDir string) error {
 	logrus.Infof("Importing distro from %q to %q", path.Join(instanceDir, filenames.WslRootFsDir), path.Join(instanceDir, filenames.WslRootFs))
-	_, err := wslCommand(true, "--import", "lima-"+name, path.Join(instanceDir, filenames.WslRootFsDir), path.Join(instanceDir, filenames.WslRootFs))
+	_, err := executil.RunUTF16leCommand("wsl.exe", "--import", "lima-"+name, path.Join(instanceDir, filenames.WslRootFsDir), path.Join(instanceDir, filenames.WslRootFs))
 	if err != nil {
 		return err
 	}
@@ -76,7 +39,7 @@ func initVM(name, instanceDir string) error {
 // stopVM calls WSL to stop a running VM.
 // Takes arguments for name.
 func stopVM(name string) error {
-	_, err := wslCommand(true, "--terminate", "lima-"+name)
+	_, err := executil.RunUTF16leCommand("wsl.exe", "--terminate", "lima-"+name)
 	if err != nil {
 		return err
 	}
@@ -120,8 +83,8 @@ func supportsWsl2() error {
 func attachDisks(driver *driver.BaseDriver) error {
 	ciDataPath := filepath.Join(driver.Instance.Dir, filenames.CIDataISODir)
 
-	out, err := wslCommand(
-		false,
+	out, err := exec.Command(
+		"wsl.exe",
 		"-d",
 		driver.Instance.DistroName,
 		"bash",
@@ -129,7 +92,8 @@ func attachDisks(driver *driver.BaseDriver) error {
 		fmt.Sprintf(`
 export LIMA_CIDATA_MNT=$(/usr/bin/wslpath '%s')
 exec $(/usr/bin/wslpath '%s/boot.sh')`,
-			ciDataPath, ciDataPath))
+			ciDataPath, ciDataPath),
+	).CombinedOutput()
 
 	logrus.Infof("Output from command to run boot.sh: %s", out)
 	if err != nil {

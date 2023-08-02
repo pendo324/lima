@@ -1,7 +1,6 @@
 package store
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -20,8 +19,8 @@ import (
 	"time"
 
 	"github.com/docker/go-units"
+	"github.com/lima-vm/lima/pkg/executil"
 	hostagentclient "github.com/lima-vm/lima/pkg/hostagent/api/client"
-	"github.com/lima-vm/lima/pkg/ioutilx"
 	"github.com/lima-vm/lima/pkg/limayaml"
 	"github.com/lima-vm/lima/pkg/store/dirnames"
 	"github.com/lima-vm/lima/pkg/store/filenames"
@@ -417,19 +416,12 @@ func GetWslStatus(instName, distroName string) (string, error) {
 	// PS > wsl --list --verbose
 	//   NAME      STATE           VERSION
 	// * Ubuntu    Stopped         2
-	cmd := exec.Command("wsl.exe", "--list", "--verbose")
-	out, err := cmd.CombinedOutput()
-	outString, outUTFErr := ioutilx.FromUTF16leToString(bytes.NewReader(out))
+	out, err := executil.RunUTF16leCommand("wsl.exe", "--list", "--verbose")
 	if err != nil {
-		logrus.Debugf("outString: %s", outString)
-		return "", fmt.Errorf("failed to read instance state for instance %s, try running `wsl --list --verbose` to debug, err: %w", instName, err)
-	}
-
-	if outUTFErr != nil {
 		return "", fmt.Errorf("failed to convert output from UTF16 for instance state for instance %s, err: %w", instName, err)
 	}
 
-	if len(outString) == 0 {
+	if len(out) == 0 {
 		return StatusBroken, fmt.Errorf("failed to read instance state for instance %s, try running `wsl --list --verbose` to debug, err: %w", instName, err)
 	}
 
@@ -437,7 +429,7 @@ func GetWslStatus(instName, distroName string) (string, error) {
 	// wsl --list --verbose may have differernt headers depending on localization, just split by line
 	// Windows uses little endian by default, use unicode.UseBOM policy to retrieve BOM from the text,
 	// and unicode.LittleEndian as a fallback
-	for _, rows := range strings.Split(strings.ReplaceAll(string(outString), "\r\n", "\n"), "\n") {
+	for _, rows := range strings.Split(strings.ReplaceAll(string(out), "\r\n", "\n"), "\n") {
 		cols := regexp.MustCompile(`\s+`).Split(strings.TrimSpace(rows), -1)
 		nameIdx := 0
 		// '*' indicates default instance
