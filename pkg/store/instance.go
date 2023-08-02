@@ -418,8 +418,10 @@ func GetWslStatus(instName, distroName string) (string, error) {
 	// * Ubuntu    Stopped         2
 	out, err := executil.RunUTF16leCommand("wsl.exe", "--list", "--verbose")
 	if err != nil {
-		return "", fmt.Errorf("failed to convert output from UTF16 for instance state for instance %s, err: %w", instName, err)
+		return "", fmt.Errorf("failed to run `wsl --list --verbose`, err: %w", err)
 	}
+
+	logrus.Infof("wsl.exe --list --verbose out: %s", out)
 
 	if len(out) == 0 {
 		return StatusBroken, fmt.Errorf("failed to read instance state for instance %s, try running `wsl --list --verbose` to debug, err: %w", instName, err)
