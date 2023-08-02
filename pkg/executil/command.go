@@ -8,7 +8,7 @@ import (
 )
 
 func RunUTF16leCommand(args ...string) (string, error) {
-	cmd := exec.Command(args[0], args[:1]...)
+	cmd := exec.Command(args[0], args[1:]...)
 	out, err := cmd.StdoutPipe()
 	if err != nil {
 		return "", err
