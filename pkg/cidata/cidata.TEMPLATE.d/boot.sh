@@ -72,7 +72,7 @@ fi
 
 # Signal that provisioning is done. The instance-id in the meta-data file changes on every boot,
 # so any copy from a previous boot cycle will have different content.
-cp "${LIMA_CIDATA_MNT}"/meta-data /run/lima-boot-done
+sudo cp "${LIMA_CIDATA_MNT}"/meta-data /run/lima-boot-done
 
 INFO "Exiting with code $CODE"
 exit "$CODE"
