@@ -79,7 +79,6 @@ type TemplateArgs struct {
 	RosettaBinFmt                   bool
 	SkipDefaultDependencyResolution bool
 	VMType                          string
-	CIDataISOPath                   string
 }
 
 func ValidateTemplateArgs(args TemplateArgs) error {

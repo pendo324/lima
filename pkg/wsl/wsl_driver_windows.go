@@ -140,7 +140,7 @@ func (l *LimaWslDriver) Start(ctx context.Context) (chan error, error) {
 	if err := startVM(l.Instance.Name); err != nil {
 		return nil, err
 	}
-	if err := attachDisks(l.BaseDriver); err != nil {
+	if err := provisionVM(l.BaseDriver); err != nil {
 		return nil, err
 	}
 

@@ -421,8 +421,6 @@ func GetWslStatus(instName, distroName string) (string, error) {
 		return "", fmt.Errorf("failed to run `wsl --list --verbose`, err: %w", err)
 	}
 
-	logrus.Infof("wsl.exe --list --verbose out: %s", out)
-
 	if len(out) == 0 {
 		return StatusBroken, fmt.Errorf("failed to read instance state for instance %s, try running `wsl --list --verbose` to debug, err: %w", instName, err)
 	}

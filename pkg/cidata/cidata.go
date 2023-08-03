@@ -131,7 +131,6 @@ func GenerateISO9660(instDir, name string, y *limayaml.LimaYAML, udpDNSLocalPort
 		RosettaEnabled:     *y.Rosetta.Enabled,
 		RosettaBinFmt:      *y.Rosetta.BinFmt,
 		VMType:             *y.VMType,
-		CIDataISOPath:      filepath.Join(instDir, filenames.CIDataISO),
 	}
 
 	// change instance id on every boot so network config will be processed again
@@ -393,8 +392,6 @@ func writeCIDataDir(rootPath string, layout []iso9660util.Entry) error {
 	if err := os.RemoveAll(rootPath); err != nil {
 		return err
 	}
-
-	logrus.Infof("layout: %v\n", layout)
 
 	for _, e := range layout {
 		if dir := path.Dir(e.Path); dir != "" && dir != "/" {

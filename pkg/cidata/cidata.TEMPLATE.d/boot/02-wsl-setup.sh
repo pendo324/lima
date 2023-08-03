@@ -1,7 +1,7 @@
 #!/bin/sh
 # This script replaces the cloud-init functionality of creating a user and setting its SSH keys
 # when using a WSL2 VM.
-[ "$LIMA_VMTYPE" = "wsl" ] || exit 0
+[ "$LIMA_CIDATA_VMTYPE" = "wsl" ] || exit 0
 
 # create user
 sudo useradd -u "${LIMA_CIDATA_UID}" "${LIMA_CIDATA_USER}" -d /home/"${LIMA_CIDATA_USER}".linux/

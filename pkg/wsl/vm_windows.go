@@ -4,6 +4,7 @@
 package wsl
 
 import (
+	_ "embed"
 	"fmt"
 	"os/exec"
 	"path"
@@ -13,6 +14,7 @@ import (
 	"github.com/lima-vm/lima/pkg/driver"
 	"github.com/lima-vm/lima/pkg/executil"
 	"github.com/lima-vm/lima/pkg/store/filenames"
+	"github.com/lima-vm/lima/pkg/textutil"
 	"github.com/sirupsen/logrus"
 )
 
@@ -80,24 +82,29 @@ func supportsWsl2() error {
 	return nil
 }
 
-func attachDisks(driver *driver.BaseDriver) error {
-	ciDataPath := filepath.Join(driver.Instance.Dir, filenames.CIDataISODir)
+//go:embed lima-init.TEMPLATE.sh
+var limaBoot string
 
-	out, err := exec.Command(
+func provisionVM(driver *driver.BaseDriver) error {
+	ciDataPath := filepath.Join(driver.Instance.Dir, filenames.CIDataISODir)
+	m := map[string]string{
+		"CIDataPath": ciDataPath,
+	}
+	textutil.ExecuteTemplate(limaBoot, m)
+
+	_, err := exec.Command(
 		"wsl.exe",
 		"-d",
 		driver.Instance.DistroName,
 		"bash",
 		"-c",
-		fmt.Sprintf(`
-export LIMA_CIDATA_MNT=$(/usr/bin/wslpath '%s')
-exec $(/usr/bin/wslpath '%s/boot.sh')`,
-			ciDataPath, ciDataPath),
+		limaBoot,
 	).CombinedOutput()
 
-	logrus.Infof("Output from command to run boot.sh: %s", out)
 	if err != nil {
-		return fmt.Errorf("error running wslCommand that executes boot.sh: %w", err)
+		return fmt.Errorf(
+			"error running wslCommand that executes boot.sh: %w,"+
+				"check /var/log/lima-init.log for more details", err)
 	}
 	return nil
 }

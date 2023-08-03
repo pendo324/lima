@@ -40,8 +40,8 @@ else
 	# Remove legacy systemd service
 	rm -f "/home/${LIMA_CIDATA_USER}.linux/.config/systemd/user/lima-guestagent.service"
 
-	if [ "$LIMA_VMTYPE" = "wsl" ]; then
-		sudo "${LIMA_CIDATA_GUEST_INSTALL_PREFIX}"/bin/lima-guestagent install-systemd --audit false --tcp true --debug
+	if [ "$LIMA_CIDATA_VMTYPE" = "wsl" ]; then
+		sudo "${LIMA_CIDATA_GUEST_INSTALL_PREFIX}"/bin/lima-guestagent install-systemd --audit false --tcp true
 	else
 		sudo "${LIMA_CIDATA_GUEST_INSTALL_PREFIX}"/bin/lima-guestagent install-systemd
 	fi
