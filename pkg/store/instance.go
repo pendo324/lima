@@ -107,12 +107,9 @@ func Inspect(instName string) (*Instance, error) {
 		inst.Errors = append(inst.Errors, err)
 	}
 
-	logrus.Infof("inst.HostAgentPID: %d", inst.HostAgentPID)
 	if inst.HostAgentPID != 0 {
-		logrus.Infof("haSock: %s", filepath.Join(instDir, filenames.HostAgentSock))
 		haSock := filepath.Join(instDir, filenames.HostAgentSock)
 		haClient, err := hostagentclient.NewHostAgentClient(haSock)
-		logrus.WithError(err).Infof("haClient error")
 		if err != nil {
 			inst.Status = StatusBroken
 			inst.Errors = append(inst.Errors, fmt.Errorf("failed to connect to %q: %w", haSock, err))

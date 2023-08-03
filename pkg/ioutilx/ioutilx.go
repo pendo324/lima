@@ -47,7 +47,6 @@ func CannonicalWindowsPath(orig string) string {
 	if err != nil {
 		logrus.WithError(err).Errorf("failed to convert path to mingw, maybe not using Git ssh?")
 	} else {
-		logrus.Infof("cygpath output (for %s): %s", orig, string(out))
 		newPath = strings.TrimSpace(string(out))
 	}
 	return newPath
