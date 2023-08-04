@@ -127,7 +127,7 @@ func provisionVM(ctx context.Context, driver *driver.BaseDriver) (chan error, er
 		)
 		if _, err := cmd.CombinedOutput(); err != nil {
 			errCh <- fmt.Errorf(
-				"error running wslCommand that executes boot.sh: %w,"+
+				"error running wslCommand that executes boot.sh: %w, "+
 					"check /var/log/lima-init.log for more details", err)
 		}
 

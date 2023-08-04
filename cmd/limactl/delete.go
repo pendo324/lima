@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/lima-vm/lima/pkg/executil"
+	"github.com/lima-vm/lima/pkg/limayaml"
 	networks "github.com/lima-vm/lima/pkg/networks/reconcile"
 	"github.com/lima-vm/lima/pkg/store"
 	"github.com/sirupsen/logrus"
@@ -56,6 +58,13 @@ func deleteInstance(inst *store.Instance, force bool) error {
 	if err := os.RemoveAll(inst.Dir); err != nil {
 		return fmt.Errorf("failed to remove %q: %w", inst.Dir, err)
 	}
+
+	if inst.VMType == limayaml.WSL {
+		if _, err := executil.RunUTF16leCommand([]string{"wsl", "--unregister", inst.DistroName}); err != nil {
+			return fmt.Errorf("failed to unregister wsl instance %q: %w", inst.Name, err)
+		}
+	}
+
 	return nil
 }
 
