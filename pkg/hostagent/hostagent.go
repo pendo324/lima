@@ -44,6 +44,7 @@ type HostAgent struct {
 	tcpDNSLocalPort int
 	instDir         string
 	instName        string
+	instSSHAddress  string
 	sshConfig       *ssh.SSHConfig
 	portForwarder   *portForwarder
 	onClose         []func() error // LIFO
@@ -114,7 +115,7 @@ func New(instName string, stdout io.Writer, sigintCh chan os.Signal, opts ...Opt
 	if err != nil {
 		return nil, err
 	}
-	if err = writeSSHConfigFile(inst, sshLocalPort, sshOpts); err != nil {
+	if err = writeSSHConfigFile(inst, inst.SSHAddress, sshLocalPort, sshOpts); err != nil {
 		return nil, err
 	}
 	sshConfig := &ssh.SSHConfig{
@@ -147,6 +148,7 @@ func New(instName string, stdout io.Writer, sigintCh chan os.Signal, opts ...Opt
 		tcpDNSLocalPort: tcpDNSLocalPort,
 		instDir:         inst.Dir,
 		instName:        instName,
+		instSSHAddress:  inst.SSHAddress,
 		sshConfig:       sshConfig,
 		portForwarder:   newPortForwarder(sshConfig, sshLocalPort, rules),
 		driver:          limaDriver,
@@ -156,7 +158,7 @@ func New(instName string, stdout io.Writer, sigintCh chan os.Signal, opts ...Opt
 	return a, nil
 }
 
-func writeSSHConfigFile(inst *store.Instance, sshLocalPort int, sshOpts []string) error {
+func writeSSHConfigFile(inst *store.Instance, instSSHAddress string, sshLocalPort int, sshOpts []string) error {
 	if inst.Dir == "" {
 		return fmt.Errorf("directory is unknown for the instance %q", inst.Name)
 	}
@@ -169,7 +171,7 @@ func writeSSHConfigFile(inst *store.Instance, sshLocalPort int, sshOpts []string
 	}
 	if err := sshutil.Format(&b, inst.Name, sshutil.FormatConfig,
 		append(sshOpts,
-			"Hostname=127.0.0.1",
+			fmt.Sprintf("Hostname=%s", instSSHAddress),
 			fmt.Sprintf("Port=%d", sshLocalPort),
 		)); err != nil {
 		return err
@@ -338,20 +340,6 @@ func (a *HostAgent) Run(ctx context.Context) error {
 
 	logrus.Debugf("Lima VMType: %s. limayaml.WSL: %s. VMType == limayaml.WSL: %t", *a.y.VMType, limayaml.WSL, *a.y.VMType == limayaml.WSL)
 
-	if *a.y.VMType == limayaml.WSL {
-		local := fmt.Sprintf("127.0.0.1:%d", a.sshLocalPort)
-		remoteAddr, err := store.GetSSHAddress(a.instName, fmt.Sprintf("lima-%s", a.instName))
-		if err != nil {
-			logrus.Errorf("failed to get remote SSH address: %v", err)
-		}
-		remote := fmt.Sprintf("%s:22", remoteAddr)
-		logrus.Debugf("Forwarding for SSH connection: local (%s) => remote (%s)", local, remote)
-		err = forwardTCPWsl(ctx, a.sshConfig, 0, local, remote, verbForward)
-		if err != nil {
-			logrus.Errorf("failed to forward SSH connection: %v", err)
-		}
-	}
-
 	if a.driver.CanRunGUI() {
 		go func() {
 			err = a.startRoutinesAndWait(ctx, errCh)
@@ -412,7 +400,7 @@ func (a *HostAgent) Info(_ context.Context) (*hostagentapi.Info, error) {
 func (a *HostAgent) startHostAgentRoutines(ctx context.Context) error {
 	a.onClose = append(a.onClose, func() error {
 		logrus.Debugf("shutting down the SSH master")
-		if exitMasterErr := ssh.ExitMaster("127.0.0.1", a.sshLocalPort, a.sshConfig); exitMasterErr != nil {
+		if exitMasterErr := ssh.ExitMaster(a.instSSHAddress, a.sshLocalPort, a.sshConfig); exitMasterErr != nil {
 			logrus.WithError(exitMasterErr).Warn("failed to exit SSH master")
 		}
 		return nil
@@ -428,7 +416,7 @@ sudo mkdir -p -m 700 /run/host-services
 sudo ln -sf "${SSH_AUTH_SOCK}" /run/host-services/ssh-auth.sock
 sudo chown -R "${USER}" /run/host-services`
 		faDesc := "linking ssh auth socket to static location /run/host-services/ssh-auth.sock"
-		stdout, stderr, err := ssh.ExecuteScript("127.0.0.1", a.sshLocalPort, a.sshConfig, faScript, faDesc)
+		stdout, stderr, err := ssh.ExecuteScript(a.instSSHAddress, a.sshLocalPort, a.sshConfig, faScript, faDesc)
 		logrus.Debugf("stdout=%q, stderr=%q, err=%v", stdout, stderr, err)
 		if err != nil {
 			mErr = multierror.Append(mErr, fmt.Errorf("stdout=%q, stderr=%q: %w", stdout, stderr, err))
@@ -498,17 +486,15 @@ func (a *HostAgent) watchGuestAgentEvents(ctx context.Context) {
 	// TODO: use vSock (when QEMU for macOS gets support for vSock)
 
 	localUnix := filepath.Join(a.instDir, filenames.GuestAgentSock)
-	// localUnixForwarding := localUnix
 	remoteUnix := "/run/lima-guestagent.sock"
 
-	if runtime.GOOS == "windows" {
-		// localUnixForwarding = ioutilx.CannonicalWindowsPath(localUnix)
-		instSSHAddress, err := store.GetSSHAddress(a.instName, fmt.Sprintf("lima-%s", a.instName))
+	if *a.y.VMType == limayaml.WSL {
+		instSSHAddress, err := store.GetWslSSHAddress(a.instName, fmt.Sprintf("lima-%s", a.instName))
 		if err == nil {
 			localUnix = fmt.Sprintf("%s:45645", instSSHAddress)
 		} else {
 			logrus.WithError(err).Errorf("failed to get WSL SSH Address")
-			localUnix = fmt.Sprintf("127.0.0.1:45645")
+			localUnix = fmt.Sprintf("%s:45645", a.instSSHAddress)
 		}
 	}
 
@@ -585,7 +571,7 @@ func (a *HostAgent) processGuestAgentEvents(ctx context.Context, localUnix strin
 		for _, f := range ev.Errors {
 			logrus.Warnf("received error from the guest: %q", f)
 		}
-		a.portForwarder.OnEvent(ctx, ev, *a.y.VMType, *&a.instName)
+		a.portForwarder.OnEvent(ctx, ev, *a.y.VMType, a.instName)
 	}
 
 	if err := client.Events(ctx, onEvent); err != nil {

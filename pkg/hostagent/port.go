@@ -81,15 +81,9 @@ func (pf *portForwarder) forwardingAddresses(guest api.IPPort, localUnixIP net.I
 }
 
 func (pf *portForwarder) OnEvent(ctx context.Context, ev api.Event, vmType, instName string) {
-	tcpForwarder := forwardTCP
-	if vmType == limayaml.WSL {
-		tcpForwarder = forwardTCPWsl
-	}
-
 	localUnixIP := net.ParseIP("127.0.0.1")
-	if runtime.GOOS == "windows" {
-		// localUnixForwarding = ioutilx.CannonicalWindowsPath(localUnix)
-		instSSHAddress, err := store.GetSSHAddress(instName, fmt.Sprintf("lima-%s", instName))
+	if vmType == limayaml.WSL {
+		instSSHAddress, err := store.GetWslSSHAddress(instName, fmt.Sprintf("lima-%s", instName))
 		if err == nil {
 			localUnixIP = net.ParseIP(instSSHAddress)
 		} else {
@@ -104,7 +98,7 @@ func (pf *portForwarder) OnEvent(ctx context.Context, ev api.Event, vmType, inst
 		}
 		logrus.Infof("Stopping forwarding TCP from %s to %s", remote, local)
 
-		if err := tcpForwarder(ctx, pf.sshConfig, pf.sshHostPort, local, remote, verbCancel); err != nil {
+		if err := forwardTCP(ctx, pf.sshConfig, pf.sshHostPort, local, remote, verbCancel); err != nil {
 			logrus.WithError(err).Warnf("failed to stop forwarding tcp port %d", f.Port)
 		}
 	}
@@ -115,7 +109,7 @@ func (pf *portForwarder) OnEvent(ctx context.Context, ev api.Event, vmType, inst
 			continue
 		}
 		logrus.Infof("Forwarding TCP from %s to %s", remote, local)
-		if err := tcpForwarder(ctx, pf.sshConfig, pf.sshHostPort, local, remote, verbForward); err != nil {
+		if err := forwardTCP(ctx, pf.sshConfig, pf.sshHostPort, local, remote, verbForward); err != nil {
 			logrus.WithError(err).Warnf("failed to set up forwarding tcp port %d (negligible if already forwarded)", f.Port)
 		}
 	}

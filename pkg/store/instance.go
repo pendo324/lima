@@ -136,8 +136,10 @@ func Inspect(instName string) (*Instance, error) {
 			inst.Status = status
 		}
 
+		inst.SSHLocalPort = 22
+
 		if inst.Status == StatusStopped || inst.Status == StatusRunning {
-			sshAddr, err := GetSSHAddress(instName, inst.DistroName)
+			sshAddr, err := GetWslSSHAddress(instName, inst.DistroName)
 			if err == nil {
 				inst.SSHAddress = sshAddr
 			} else {
@@ -360,7 +362,7 @@ func PrintInstances(w io.Writer, instances []*Instance, format string, options *
 			fmt.Fprintf(w, "%s\t%s\t%s",
 				instance.Name,
 				instance.Status,
-				fmt.Sprintf("%s:%d", "127.0.0.1", instance.SSHLocalPort),
+				fmt.Sprintf("%s:%d", instance.SSHAddress, instance.SSHLocalPort),
 			)
 			if !hideType {
 				fmt.Fprintf(w, "\t%s",
@@ -450,7 +452,7 @@ func GetWslStatus(instName, distroName string) (string, error) {
 	return instState, nil
 }
 
-func GetSSHAddress(instName, distroName string) (string, error) {
+func GetWslSSHAddress(instName, distroName string) (string, error) {
 	// Expected output (whitespace preserved, [] for optional):
 	// PS > wsl -d <distroName> bash -c hostname -I | cut -d' ' -f1
 	// 168.1.1.1 [10.0.0.1]

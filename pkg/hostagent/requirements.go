@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/lima-vm/lima/pkg/limayaml"
+	"github.com/lima-vm/lima/pkg/store"
 	"github.com/lima-vm/sshocker/pkg/ssh"
 	"github.com/sirupsen/logrus"
 )
@@ -43,7 +44,15 @@ func (a *HostAgent) waitForRequirements(label string, requirements []requirement
 
 func (a *HostAgent) waitForRequirement(r requirement) error {
 	logrus.Debugf("executing script %q", r.description)
-	stdout, stderr, err := ssh.ExecuteScript("127.0.0.1", a.sshLocalPort, a.sshConfig, r.script, r.description)
+	sshAddr := "127.0.0.1"
+	if *a.y.VMType == limayaml.WSL {
+		remoteAddr, err := store.GetWslSSHAddress(a.instName, fmt.Sprintf("lima-%s", a.instName))
+		if err != nil {
+			logrus.Errorf("failed to get remote SSH address: %v", err)
+		}
+		sshAddr = remoteAddr
+	}
+	stdout, stderr, err := ssh.ExecuteScript(sshAddr, a.sshLocalPort, a.sshConfig, r.script, r.description)
 	logrus.Debugf("stdout=%q, stderr=%q, err=%v", stdout, stderr, err)
 	if err != nil {
 		return fmt.Errorf("stdout=%q, stderr=%q: %w", stdout, stderr, err)
