@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io/fs"
 	"syscall"
+
+	"golang.org/x/sys/windows"
 )
 
 // UnixPathMax is the value of UNIX_PATH_MAX.
@@ -28,7 +30,7 @@ const SigKill = Signal(9)
 type Signal int
 
 func SysKill(pid int, sig Signal) error {
-	return windows.GenerateConsoleCtrlEvent(syscall.CTRL_BREAK_EVENT, uint32(p.Pid))
+	return windows.GenerateConsoleCtrlEvent(syscall.CTRL_BREAK_EVENT, uint32(pid))
 }
 
 func Ftruncate(fd int, length int64) (err error) {
