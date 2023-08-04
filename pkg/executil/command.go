@@ -1,14 +1,42 @@
 package executil
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 
 	"github.com/lima-vm/lima/pkg/ioutilx"
 )
 
-func RunUTF16leCommand(args ...string) (string, error) {
-	cmd := exec.Command(args[0], args[1:]...)
+type options struct {
+	ctx *context.Context
+}
+
+type Opt func(*options) error
+
+// WithContext runs the command with CommandContext.
+func WithContext(ctx *context.Context) Opt {
+	return func(o *options) error {
+		o.ctx = ctx
+		return nil
+	}
+}
+
+func RunUTF16leCommand(args []string, opts ...Opt) (string, error) {
+	var o options
+	for _, f := range opts {
+		if err := f(&o); err != nil {
+			return "", err
+		}
+	}
+
+	var cmd *exec.Cmd
+	if o.ctx != nil {
+		cmd = exec.CommandContext(*o.ctx, args[0], args[1:]...)
+	} else {
+		cmd = exec.Command(args[0], args[1:]...)
+	}
+
 	out, err := cmd.StdoutPipe()
 	if err != nil {
 		return "", err

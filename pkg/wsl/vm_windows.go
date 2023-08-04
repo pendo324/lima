@@ -4,15 +4,18 @@
 package wsl
 
 import (
+	"context"
 	_ "embed"
 	"fmt"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/lima-vm/lima/pkg/driver"
 	"github.com/lima-vm/lima/pkg/executil"
+	"github.com/lima-vm/lima/pkg/store"
 	"github.com/lima-vm/lima/pkg/store/filenames"
 	"github.com/lima-vm/lima/pkg/textutil"
 	"github.com/sirupsen/logrus"
@@ -20,8 +23,12 @@ import (
 
 // startVM calls WSL to start a VM.
 // Takes argument for VM name.
-func startVM(name string) error {
-	_, err := executil.RunUTF16leCommand("wsl.exe", "--distribution", "lima-"+name)
+func startVM(ctx context.Context, name string) error {
+	_, err := executil.RunUTF16leCommand([]string{
+		"wsl.exe",
+		"--distribution",
+		"lima-" + name,
+	}, executil.WithContext(&ctx))
 	if err != nil {
 		return err
 	}
@@ -29,9 +36,15 @@ func startVM(name string) error {
 }
 
 // initVM calls WSL to import a new VM specifically for Lima.
-func initVM(name, instanceDir string) error {
+func initVM(ctx context.Context, name, instanceDir string) error {
 	logrus.Infof("Importing distro from %q to %q", path.Join(instanceDir, filenames.WslRootFsDir), path.Join(instanceDir, filenames.WslRootFs))
-	_, err := executil.RunUTF16leCommand("wsl.exe", "--import", "lima-"+name, path.Join(instanceDir, filenames.WslRootFsDir), path.Join(instanceDir, filenames.WslRootFs))
+	_, err := executil.RunUTF16leCommand([]string{
+		"wsl.exe",
+		"--import",
+		"lima-" + name,
+		path.Join(instanceDir, filenames.WslRootFsDir),
+		path.Join(instanceDir, filenames.WslRootFs),
+	}, executil.WithContext(&ctx))
 	if err != nil {
 		return err
 	}
@@ -41,7 +54,11 @@ func initVM(name, instanceDir string) error {
 // stopVM calls WSL to stop a running VM.
 // Takes arguments for name.
 func stopVM(name string) error {
-	_, err := executil.RunUTF16leCommand("wsl.exe", "--terminate", "lima-"+name)
+	_, err := executil.RunUTF16leCommand([]string{
+		"wsl.exe",
+		"--terminate",
+		"lima-" + name,
+	})
 	if err != nil {
 		return err
 	}
@@ -85,26 +102,46 @@ func supportsWsl2() error {
 //go:embed lima-init.TEMPLATE.sh
 var limaBoot string
 
-func provisionVM(driver *driver.BaseDriver) error {
+func provisionVM(ctx context.Context, driver *driver.BaseDriver) (chan error, error) {
 	ciDataPath := filepath.Join(driver.Instance.Dir, filenames.CIDataISODir)
 	m := map[string]string{
 		"CIDataPath": ciDataPath,
 	}
-	textutil.ExecuteTemplate(limaBoot, m)
-
-	_, err := exec.Command(
-		"wsl.exe",
-		"-d",
-		driver.Instance.DistroName,
-		"bash",
-		"-c",
-		limaBoot,
-	).CombinedOutput()
-
+	out, err := textutil.ExecuteTemplate(limaBoot, m)
 	if err != nil {
-		return fmt.Errorf(
-			"error running wslCommand that executes boot.sh: %w,"+
-				"check /var/log/lima-init.log for more details", err)
+		return nil, fmt.Errorf("failed to construct wsl boot.sh script: %w", err)
 	}
-	return nil
+	outString := strings.Replace(string(out), `\r\n`, `\n`, -1)
+
+	errCh := make(chan error)
+
+	go func() {
+		cmd := exec.CommandContext(
+			ctx,
+			"wsl.exe",
+			"-d",
+			driver.Instance.DistroName,
+			"bash",
+			"-c",
+			outString,
+		)
+		if _, err := cmd.CombinedOutput(); err != nil {
+			errCh <- fmt.Errorf(
+				"error running wslCommand that executes boot.sh: %w,"+
+					"check /var/log/lima-init.log for more details", err)
+		}
+
+		for {
+			select {
+			case <-ctx.Done():
+				logrus.Info("Context closed, stopping vm")
+				if status, err := store.GetWslStatus(driver.Instance.Name, driver.Instance.DistroName); err == nil &&
+					status == store.StatusRunning {
+					stopVM(driver.Instance.Name)
+				}
+			}
+		}
+	}()
+
+	return errCh, err
 }

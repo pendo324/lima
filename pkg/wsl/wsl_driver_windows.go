@@ -132,19 +132,20 @@ func (l *LimaWslDriver) Start(ctx context.Context) (chan error, error) {
 		if err := EnsureFs(l.BaseDriver); err != nil {
 			return nil, err
 		}
-		if err := initVM(l.Instance.Name, l.Instance.Dir); err != nil {
+		if err := initVM(ctx, l.Instance.Name, l.Instance.Dir); err != nil {
 			return nil, err
 		}
 	}
 
-	if err := startVM(l.Instance.Name); err != nil {
+	if err := startVM(ctx, l.Instance.Name); err != nil {
 		return nil, err
 	}
-	if err := provisionVM(l.BaseDriver); err != nil {
+	errCh, err := provisionVM(ctx, l.BaseDriver)
+	if err != nil {
 		return nil, err
 	}
 
-	return nil, nil
+	return errCh, nil
 }
 
 // Requires WSLg, which requires specific version of WSL2 to be installed.

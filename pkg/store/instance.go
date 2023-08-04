@@ -413,7 +413,11 @@ func GetWslStatus(instName, distroName string) (string, error) {
 	// PS > wsl --list --verbose
 	//   NAME      STATE           VERSION
 	// * Ubuntu    Stopped         2
-	out, err := executil.RunUTF16leCommand("wsl.exe", "--list", "--verbose")
+	out, err := executil.RunUTF16leCommand([]string{
+		"wsl.exe",
+		"--list",
+		"--verbose",
+	})
 	if err != nil {
 		return "", fmt.Errorf("failed to run `wsl --list --verbose`, err: %w", err)
 	}
