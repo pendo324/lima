@@ -55,14 +55,14 @@ func deleteInstance(inst *store.Instance, force bool) error {
 
 	stopInstanceForcibly(inst)
 
-	if err := os.RemoveAll(inst.Dir); err != nil {
-		return fmt.Errorf("failed to remove %q: %w", inst.Dir, err)
-	}
-
 	if inst.VMType == limayaml.WSL {
 		if _, err := executil.RunUTF16leCommand([]string{"wsl", "--unregister", inst.DistroName}); err != nil {
 			return fmt.Errorf("failed to unregister wsl instance %q: %w", inst.Name, err)
 		}
+	}
+
+	if err := os.RemoveAll(inst.Dir); err != nil {
+		return fmt.Errorf("failed to remove %q: %w", inst.Dir, err)
 	}
 
 	return nil

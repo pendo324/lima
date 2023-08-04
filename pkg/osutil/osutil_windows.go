@@ -3,6 +3,7 @@ package osutil
 import (
 	"fmt"
 	"io/fs"
+	"syscall"
 )
 
 // UnixPathMax is the value of UNIX_PATH_MAX.
@@ -27,7 +28,7 @@ const SigKill = Signal(9)
 type Signal int
 
 func SysKill(pid int, sig Signal) error {
-	return fmt.Errorf("unimplemented")
+	return windows.GenerateConsoleCtrlEvent(syscall.CTRL_BREAK_EVENT, uint32(p.Pid))
 }
 
 func Ftruncate(fd int, length int64) (err error) {
