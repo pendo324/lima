@@ -94,6 +94,9 @@ func New(instName string, stdout io.Writer, sigintCh chan os.Signal, opts ...Opt
 	if err != nil {
 		return nil, err
 	}
+	if *y.VMType == limayaml.WSL {
+		sshLocalPort = inst.SSHLocalPort
+	}
 
 	var udpDNSLocalPort, tcpDNSLocalPort int
 	if *y.HostResolver.Enabled {
