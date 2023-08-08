@@ -132,20 +132,24 @@ func (l *LimaWslDriver) Start(ctx context.Context) (chan error, error) {
 		if err := EnsureFs(l.BaseDriver); err != nil {
 			return nil, err
 		}
-		if err := initVM(ctx, l.Instance.Name, l.Instance.Dir); err != nil {
+		if err := initVM(ctx, l.BaseDriver); err != nil {
 			return nil, err
 		}
 	}
 
-	if err := startVM(ctx, l.Instance.Name); err != nil {
-		return nil, err
-	}
-	errCh, err := provisionVM(ctx, l.BaseDriver)
-	if err != nil {
+	errCh := make(chan error)
+
+	if err := startVM(ctx, l.BaseDriver); err != nil {
 		return nil, err
 	}
 
-	return errCh, nil
+	if err := provisionVM(ctx, l.BaseDriver, &errCh); err != nil {
+		return nil, err
+	}
+
+	keepAlive(ctx, l.BaseDriver, &errCh)
+
+	return errCh, err
 }
 
 // Requires WSLg, which requires specific version of WSL2 to be installed.
@@ -159,8 +163,8 @@ func (l *LimaWslDriver) RunGUI() error {
 	return fmt.Errorf("RunGUI is not support for the given driver '%s' and diplay '%s'", "wsl", *l.Yaml.Video.Display)
 }
 
-func (l *LimaWslDriver) Stop(_ context.Context) error {
+func (l *LimaWslDriver) Stop(ctx context.Context) error {
 	logrus.Info("Shutting down WSL2 VM")
 
-	return stopVM(l.Instance.Name)
+	return stopVM(ctx, l.BaseDriver)
 }

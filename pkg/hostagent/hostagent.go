@@ -341,8 +341,6 @@ func (a *HostAgent) Run(ctx context.Context) error {
 		logrus.Infof("VNC Password: `%s`", vncpwdfile)
 	}
 
-	logrus.Debugf("Lima VMType: %s. limayaml.WSL: %s. VMType == limayaml.WSL: %t", *a.y.VMType, limayaml.WSL, *a.y.VMType == limayaml.WSL)
-
 	if a.driver.CanRunGUI() {
 		go func() {
 			err = a.startRoutinesAndWait(ctx, errCh)
