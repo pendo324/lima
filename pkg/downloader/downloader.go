@@ -297,24 +297,6 @@ func copyLocal(dst, src, ext string, decompress bool, description string, expect
 	return fs.CopyFile(dstPath, srcPath)
 }
 
-func Decompressor(ext string) ([]string, bool) {
-	var program string
-	switch ext {
-	case ".gz":
-		program = "gzip"
-	case ".bz2":
-		program = "bzip2"
-	case ".xz":
-		program = "xz"
-	case ".zst":
-		program = "zstd"
-	default:
-		return nil, false
-	}
-	// -d --decompress
-	return []string{program, "-d"}, true
-}
-
 func decompressLocal(dst, src, ext string, description string) error {
 	command, found := Decompressor(ext)
 	if !found {

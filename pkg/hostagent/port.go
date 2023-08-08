@@ -3,6 +3,7 @@ package hostagent
 import (
 	"context"
 	"net"
+	"runtime"
 
 	"github.com/lima-vm/lima/pkg/guestagent/api"
 	"github.com/lima-vm/lima/pkg/limayaml"
@@ -40,7 +41,15 @@ func hostAddress(rule limayaml.PortForward, guest api.IPPort) string {
 	return host.String()
 }
 
-func (pf *portForwarder) forwardingAddresses(guest api.IPPort) (string, string) {
+func (pf *portForwarder) forwardingAddresses(guest api.IPPort, localUnixIP net.IP) (string, string) {
+	if runtime.GOOS == "windows" {
+		guest.IP = localUnixIP
+		host := api.IPPort{
+			IP:   net.ParseIP("127.0.0.1"),
+			Port: guest.Port,
+		}
+		return host.String(), guest.String()
+	}
 	for _, rule := range pf.rules {
 		if rule.GuestSocket != "" {
 			continue
@@ -69,19 +78,22 @@ func (pf *portForwarder) forwardingAddresses(guest api.IPPort) (string, string) 
 	return "", guest.String()
 }
 
-func (pf *portForwarder) OnEvent(ctx context.Context, ev api.Event) {
+func (pf *portForwarder) OnEvent(ctx context.Context, ev api.Event, instSSHAddress string) {
+	localUnixIP := net.ParseIP(instSSHAddress)
+
 	for _, f := range ev.LocalPortsRemoved {
-		local, remote := pf.forwardingAddresses(f)
+		local, remote := pf.forwardingAddresses(f, localUnixIP)
 		if local == "" {
 			continue
 		}
 		logrus.Infof("Stopping forwarding TCP from %s to %s", remote, local)
+
 		if err := forwardTCP(ctx, pf.sshConfig, pf.sshHostPort, local, remote, verbCancel); err != nil {
 			logrus.WithError(err).Warnf("failed to stop forwarding tcp port %d", f.Port)
 		}
 	}
 	for _, f := range ev.LocalPortsAdded {
-		local, remote := pf.forwardingAddresses(f)
+		local, remote := pf.forwardingAddresses(f, localUnixIP)
 		if local == "" {
 			logrus.Infof("Not forwarding TCP %s", remote)
 			continue

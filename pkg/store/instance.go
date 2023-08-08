@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -17,6 +19,7 @@ import (
 	"time"
 
 	"github.com/docker/go-units"
+	"github.com/lima-vm/lima/pkg/executil"
 	hostagentclient "github.com/lima-vm/lima/pkg/hostagent/api/client"
 	"github.com/lima-vm/lima/pkg/limayaml"
 	"github.com/lima-vm/lima/pkg/store/dirnames"
@@ -27,10 +30,12 @@ import (
 type Status = string
 
 const (
-	StatusUnknown Status = ""
-	StatusBroken  Status = "Broken"
-	StatusStopped Status = "Stopped"
-	StatusRunning Status = "Running"
+	StatusUnknown       Status = ""
+	StatusUninitialized Status = "Uninitialized"
+	StatusInstalling    Status = "Installing"
+	StatusBroken        Status = "Broken"
+	StatusStopped       Status = "Stopped"
+	StatusRunning       Status = "Running"
 )
 
 type Instance struct {
@@ -52,6 +57,7 @@ type Instance struct {
 	DriverPID       int                `json:"driverPID,omitempty"`
 	Errors          []error            `json:"errors,omitempty"`
 	Config          *limayaml.LimaYAML `json:"config,omitempty"`
+	SSHAddress      string             `json:"sshAddress,omitempty"`
 }
 
 func (inst *Instance) LoadYAML() (*limayaml.LimaYAML, error) {
@@ -89,21 +95,9 @@ func Inspect(instName string) (*Instance, error) {
 	inst.Arch = *y.Arch
 	inst.VMType = *y.VMType
 	inst.CPUType = y.CPUType[*y.Arch]
-
-	inst.CPUs = *y.CPUs
-	memory, err := units.RAMInBytes(*y.Memory)
-	if err == nil {
-		inst.Memory = memory
-	}
-	disk, err := units.RAMInBytes(*y.Disk)
-	if err == nil {
-		inst.Disk = disk
-	}
-	inst.AdditionalDisks = y.AdditionalDisks
-	inst.Networks = y.Networks
+	inst.SSHAddress = "127.0.0.1"
 	inst.SSHLocalPort = *y.SSH.LocalPort // maybe 0
 	inst.SSHConfigFile = filepath.Join(instDir, filenames.SSHConfig)
-
 	inst.HostAgentPID, err = ReadPIDFile(filepath.Join(instDir, filenames.HostAgentPID))
 	if err != nil {
 		inst.Status = StatusBroken
@@ -129,26 +123,58 @@ func Inspect(instName string) (*Instance, error) {
 		}
 	}
 
-	inst.DriverPID, err = ReadPIDFile(filepath.Join(instDir, filenames.PIDFile(*y.VMType)))
-	if err != nil {
-		inst.Status = StatusBroken
-		inst.Errors = append(inst.Errors, err)
-	}
-
-	if inst.Status == StatusUnknown {
-		if inst.HostAgentPID > 0 && inst.DriverPID > 0 {
-			inst.Status = StatusRunning
-		} else if inst.HostAgentPID == 0 && inst.DriverPID == 0 {
-			inst.Status = StatusStopped
-		} else if inst.HostAgentPID > 0 && inst.DriverPID == 0 {
-			inst.Errors = append(inst.Errors, errors.New("host agent is running but driver is not"))
+	if inst.VMType == limayaml.WSL2 {
+		status, err := GetWslStatus(instName)
+		if err != nil {
 			inst.Status = StatusBroken
+			inst.Errors = append(inst.Errors, err)
 		} else {
-			inst.Errors = append(inst.Errors, fmt.Errorf("%s driver is running but host agent is not", inst.VMType))
+			inst.Status = status
+		}
+
+		inst.SSHLocalPort = 22
+
+		if inst.Status == StatusRunning {
+			sshAddr, err := GetWslSSHAddress(instName)
+			if err == nil {
+				inst.SSHAddress = sshAddr
+			} else {
+				inst.Errors = append(inst.Errors, err)
+			}
+		}
+	} else {
+		inst.CPUs = *y.CPUs
+		memory, err := units.RAMInBytes(*y.Memory)
+		if err == nil {
+			inst.Memory = memory
+		}
+		disk, err := units.RAMInBytes(*y.Disk)
+		if err == nil {
+			inst.Disk = disk
+		}
+		inst.AdditionalDisks = y.AdditionalDisks
+		inst.Networks = y.Networks
+
+		inst.DriverPID, err = ReadPIDFile(filepath.Join(instDir, filenames.PIDFile(*y.VMType)))
+		if err != nil {
 			inst.Status = StatusBroken
+			inst.Errors = append(inst.Errors, err)
+		}
+
+		if inst.Status == StatusUnknown {
+			if inst.HostAgentPID > 0 && inst.DriverPID > 0 {
+				inst.Status = StatusRunning
+			} else if inst.HostAgentPID == 0 && inst.DriverPID == 0 {
+				inst.Status = StatusStopped
+			} else if inst.HostAgentPID > 0 && inst.DriverPID == 0 {
+				inst.Errors = append(inst.Errors, errors.New("host agent is running but driver is not"))
+				inst.Status = StatusBroken
+			} else {
+				inst.Errors = append(inst.Errors, fmt.Errorf("%s driver is running but host agent is not", inst.VMType))
+				inst.Status = StatusBroken
+			}
 		}
 	}
-
 	tmpl, err := template.New("format").Parse(y.Message)
 	if err != nil {
 		inst.Errors = append(inst.Errors, fmt.Errorf("message %q is not a valid template: %w", y.Message, err))
@@ -189,6 +215,10 @@ func ReadPIDFile(path string) (int, error) {
 	proc, err := os.FindProcess(pid)
 	if err != nil {
 		return 0, err
+	}
+	// os.FindProcess will only return running processes on Windows, exit early
+	if runtime.GOOS == "windows" {
+		return pid, nil
 	}
 	err = proc.Signal(syscall.Signal(0))
 	if err != nil {
@@ -328,7 +358,7 @@ func PrintInstances(w io.Writer, instances []*Instance, format string, options *
 			fmt.Fprintf(w, "%s\t%s\t%s",
 				instance.Name,
 				instance.Status,
-				fmt.Sprintf("127.0.0.1:%d", instance.SSHLocalPort),
+				fmt.Sprintf("%s:%d", instance.SSHAddress, instance.SSHLocalPort),
 			)
 			if !hideType {
 				fmt.Fprintf(w, "\t%s",
@@ -374,4 +404,63 @@ func PrintInstances(w io.Writer, instances []*Instance, format string, options *
 		fmt.Fprintln(w)
 	}
 	return nil
+}
+
+// GetWslStatus runs `wsl --list --verbose` and parses its output
+// Expected output (whitespace preserved):
+// PS > wsl --list --verbose
+//
+//	NAME      STATE           VERSION
+//
+// * Ubuntu    Stopped         2
+func GetWslStatus(instName string) (string, error) {
+	distroName := "lima-" + instName
+	out, err := executil.RunUTF16leCommand([]string{
+		"wsl.exe",
+		"--list",
+		"--verbose",
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to run `wsl --list --verbose`, err: %w", err)
+	}
+
+	if len(out) == 0 {
+		return StatusBroken, fmt.Errorf("failed to read instance state for instance %s, try running `wsl --list --verbose` to debug, err: %w", instName, err)
+	}
+
+	var instState string
+	// wsl --list --verbose may have differernt headers depending on localization, just split by line
+	for _, rows := range strings.Split(strings.ReplaceAll(string(out), "\r\n", "\n"), "\n") {
+		cols := regexp.MustCompile(`\s+`).Split(strings.TrimSpace(rows), -1)
+		nameIdx := 0
+		// '*' indicates default instance
+		if cols[0] == "*" {
+			nameIdx = 1
+		}
+		if cols[nameIdx] == distroName {
+			instState = cols[nameIdx+1]
+			break
+		}
+	}
+
+	if instState == "" {
+		return StatusUninitialized, nil
+	}
+
+	return instState, nil
+}
+
+// GetWslSSHAddress runs a hostname command to get the IP from inside of a wsl2 VM.
+// Expected output (whitespace preserved, [] for optional):
+// PS > wsl -d <distroName> bash -c hostname -I | cut -d' ' -f1
+// 168.1.1.1 [10.0.0.1]
+func GetWslSSHAddress(instName string) (string, error) {
+	distroName := "lima-" + instName
+	cmd := exec.Command("wsl.exe", "-d", distroName, "bash", "-c", `hostname -I | cut -d ' ' -f1`)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to get hostname for instance %s, err: %w", instName, err)
+	}
+
+	return strings.TrimSpace(string(out)), nil
 }

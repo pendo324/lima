@@ -78,6 +78,8 @@ type TemplateArgs struct {
 	RosettaEnabled                  bool
 	RosettaBinFmt                   bool
 	SkipDefaultDependencyResolution bool
+	VMType                          string
+	VSockPort                       int
 }
 
 func ValidateTemplateArgs(args TemplateArgs) error {
