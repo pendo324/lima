@@ -106,7 +106,7 @@ func setupEnv(y *limayaml.LimaYAML) (map[string]string, error) {
 	return env, nil
 }
 
-func GenerateISO9660(instDir, name string, y *limayaml.LimaYAML, udpDNSLocalPort, tcpDNSLocalPort int, nerdctlArchive string) error {
+func GenerateISO9660(instDir, name string, y *limayaml.LimaYAML, udpDNSLocalPort, tcpDNSLocalPort int, nerdctlArchive string, vsockPort int) error {
 	if err := limayaml.Validate(*y, false); err != nil {
 		return err
 	}
@@ -131,6 +131,7 @@ func GenerateISO9660(instDir, name string, y *limayaml.LimaYAML, udpDNSLocalPort
 		RosettaEnabled:     *y.Rosetta.Enabled,
 		RosettaBinFmt:      *y.Rosetta.BinFmt,
 		VMType:             *y.VMType,
+		VSockPort:          vsockPort,
 	}
 
 	// change instance id on every boot so network config will be processed again

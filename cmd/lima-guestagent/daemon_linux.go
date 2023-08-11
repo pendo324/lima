@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/lima-vm/lima/pkg/guestagent"
 	"github.com/lima-vm/lima/pkg/guestagent/api/server"
+	"github.com/mdlayher/vsock"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -21,8 +23,9 @@ func newDaemonCommand() *cobra.Command {
 		RunE:  daemonAction,
 	}
 	daemonCommand.Flags().Duration("tick", 3*time.Second, "tick for polling events")
-	daemonCommand.Flags().Bool("audit", true, "use audit features")
-	daemonCommand.Flags().Bool("tcp", false, "use tcp server instead a UNIX socket")
+	daemonCommand.Flags().Int("tcp-port", 0, "use tcp server instead a UNIX socket")
+	daemonCommand.Flags().Int("vsock-port", 0, "use vsock server instead a UNIX socket")
+	daemonCommand.MarkFlagsMutuallyExclusive("tcp-port", "vsock-port")
 	return daemonCommand
 }
 
@@ -32,11 +35,11 @@ func daemonAction(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	audit, err := cmd.Flags().GetBool("audit")
+	tcpPort, err := cmd.Flags().GetInt("tcp-port")
 	if err != nil {
 		return err
 	}
-	tcp, err := cmd.Flags().GetBool("tcp")
+	vSockPort, err := cmd.Flags().GetInt("vsock-port")
 	if err != nil {
 		return err
 	}
@@ -56,7 +59,7 @@ func daemonAction(cmd *cobra.Command, _ []string) error {
 		return ticker.C, ticker.Stop
 	}
 
-	agent, err := guestagent.New(newTicker, tick*20, audit)
+	agent, err := guestagent.New(newTicker, tick*20)
 	if err != nil {
 		return err
 	}
@@ -72,14 +75,20 @@ func daemonAction(cmd *cobra.Command, _ []string) error {
 	}
 
 	var l net.Listener
-	listenPort := ":45645"
-	if tcp {
-		tcpL, err := net.Listen("tcp", listenPort)
+	if vSockPort != 0 {
+		vsockL, err := vsock.Listen(uint32(vSockPort), nil)
+		if err != nil {
+			return err
+		}
+		l = vsockL
+		logrus.Infof("serving the guest agent on vsock port: %d", tcpPort)
+	} else if tcpPort != 0 {
+		tcpL, err := net.Listen("tcp", fmt.Sprintf(":%d", tcpPort))
 		if err != nil {
 			return err
 		}
 		l = tcpL
-		logrus.Infof("serving the guest agent at %d", listenPort)
+		logrus.Infof("serving the guest agent at :%d", tcpPort)
 	} else {
 		socketL, err := net.Listen("unix", socket)
 		if err != nil {

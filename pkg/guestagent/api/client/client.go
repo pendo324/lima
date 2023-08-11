@@ -9,10 +9,18 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"runtime"
+	"strconv"
 
 	"github.com/lima-vm/lima/pkg/guestagent/api"
 	"github.com/lima-vm/lima/pkg/httpclientutil"
+)
+
+type Proto string
+
+const (
+	TCP   Proto = "TCP"
+	UNIX  Proto = "UNIX"
+	VSOCK Proto = "VSOCK"
 )
 
 type GuestAgentClient interface {
@@ -23,9 +31,10 @@ type GuestAgentClient interface {
 
 // NewGuestAgentClient creates a client.
 // remote is a path to the UNIX socket, without unix:// prefix or a remote hostname/IP address.
-func NewGuestAgentClient(remote string) (GuestAgentClient, error) {
+func NewGuestAgentClient(remote string, proto Proto) (GuestAgentClient, error) {
 	var hc *http.Client
-	if runtime.GOOS == "windows" {
+	switch proto {
+	case TCP:
 		hc = &http.Client{
 			Transport: &http.Transport{
 				DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
@@ -34,13 +43,24 @@ func NewGuestAgentClient(remote string) (GuestAgentClient, error) {
 				},
 			},
 		}
-	} else {
+	case UNIX:
 		hcSock, err := httpclientutil.NewHTTPClientWithSocketPath(remote)
 		if err != nil {
 			return nil, err
 		}
 		hc = hcSock
+	case VSOCK:
+		_, p, err := net.SplitHostPort(remote)
+		if err != nil {
+			return nil, err
+		}
+		port, err := strconv.Atoi(p)
+		if err != nil {
+			return nil, err
+		}
+		hc = httpclientutil.NewHTTPClientWithVSockPort(port)
 	}
+
 	return NewGuestAgentClientWithHTTPClient(hc), nil
 }
 

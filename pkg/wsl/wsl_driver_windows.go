@@ -76,12 +76,16 @@ func (l *LimaWslDriver) Validate() error {
 		}
 	}
 
+	re, err := regexp.Compile(`.*tar\.*`)
+	if err != nil {
+		return fmt.Errorf("failed to compile file check regex: %w", err)
+	}
 	for i, image := range l.Yaml.Images {
 		if unknown := reflectutil.UnknownNonEmptyFields(image, "File"); len(unknown) > 0 {
 			logrus.Warnf("Ignoring: vmType %s: images[%d]: %+v", *l.Yaml.VMType, i, unknown)
 		}
 		// TODO: real filetype checks
-		match, _ := regexp.MatchString(`.*tar\.*`, image.Location)
+		match := re.MatchString(image.Location)
 		if image.Arch == *l.Yaml.Arch && !match {
 			return fmt.Errorf("unsupported image type for vmType: %s, tarball root file system required: %q", *l.Yaml.VMType, image.Location)
 		}
@@ -109,15 +113,6 @@ func (l *LimaWslDriver) Validate() error {
 	// if videoDisplay != "" {
 	// 	logrus.Warnf("Ignoring: vmType %s: `audio.device`: %+v", *l.Yaml.VMType, videoDisplay)
 	// }
-	return nil
-}
-
-func (l *LimaWslDriver) CreateDisk() error {
-	// TODO: rewrite EnsureDisk to work with vhdx
-	// if err := EnsureDisk(l.BaseDriver); err != nil {
-	// 	return err
-	// }
-
 	return nil
 }
 

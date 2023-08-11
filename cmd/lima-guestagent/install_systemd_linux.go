@@ -20,21 +20,22 @@ func newInstallSystemdCommand() *cobra.Command {
 		Short: "install a systemd unit (user)",
 		RunE:  installSystemdAction,
 	}
-	installSystemdCommand.Flags().Bool("audit", true, "use audit features")
-	installSystemdCommand.Flags().Bool("tcp", false, "use tcp server")
+	installSystemdCommand.Flags().Int("tcp-port", 0, "use tcp server on specified port")
+	installSystemdCommand.Flags().Int("vsock-port", 0, "use vsock server on specified port")
+	installSystemdCommand.MarkFlagsMutuallyExclusive("tcp-port", "vsock-port")
 	return installSystemdCommand
 }
 
 func installSystemdAction(cmd *cobra.Command, args []string) error {
-	audit, err := cmd.Flags().GetBool("audit")
+	tcp, err := cmd.Flags().GetInt("tcp-port")
 	if err != nil {
 		return err
 	}
-	tcp, err := cmd.Flags().GetBool("tcp")
+	vsock, err := cmd.Flags().GetInt("vsock-portock")
 	if err != nil {
 		return err
 	}
-	unit, err := generateSystemdUnit(audit, tcp)
+	unit, err := generateSystemdUnit(tcp, vsock)
 	if err != nil {
 		return err
 	}
@@ -71,14 +72,23 @@ func installSystemdAction(cmd *cobra.Command, args []string) error {
 //go:embed lima-guestagent.TEMPLATE.service
 var systemdUnitTemplate string
 
-func generateSystemdUnit(audit, tcp bool) ([]byte, error) {
+func generateSystemdUnit(tcpPort, vsockPort int) ([]byte, error) {
 	selfExeAbs, err := os.Executable()
 	if err != nil {
 		return nil, err
 	}
+
+	var args []string
+	if tcpPort != 0 {
+		args = append(args, fmt.Sprintf("--tcp-port %d", tcpPort))
+	}
+	if vsockPort != 0 {
+		args = append(args, fmt.Sprintf("--vsock-port %d", vsockPort))
+	}
+
 	m := map[string]string{
 		"Binary": selfExeAbs,
-		"Args":   fmt.Sprintf("--audit=%t --tcp=%t", audit, tcp),
+		"Args":   strings.Join(args, " "),
 	}
 	return textutil.ExecuteTemplate(systemdUnitTemplate, m)
 }

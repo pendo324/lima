@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/elastic/go-libaudit/v2"
@@ -18,31 +19,32 @@ import (
 	"golang.org/x/sys/cpu"
 )
 
-func New(newTicker func() (<-chan time.Time, func()), iptablesIdle time.Duration, audit bool) (Agent, error) {
+func New(newTicker func() (<-chan time.Time, func()), iptablesIdle time.Duration) (Agent, error) {
 	a := &agent{
 		newTicker:                newTicker,
 		kubernetesServiceWatcher: kubernetesservice.NewServiceWatcher(),
 	}
 
-	if !audit {
-		auditClient, err := libaudit.NewMulticastAuditClient(nil)
-		if err != nil {
-			return nil, err
-		}
-		auditStatus, err := auditClient.GetStatus()
-		if err != nil {
-			return nil, err
-		}
-		if auditStatus.Enabled == 0 {
-			if err = auditClient.SetEnabled(true, libaudit.WaitForReply); err != nil {
-				return nil, err
-			}
-		}
-
-		go a.setWorthCheckingIPTablesRoutine(auditClient, iptablesIdle)
-	} else {
+	auditClient, err := libaudit.NewMulticastAuditClient(nil)
+	switch {
+	case errors.Is(err, syscall.EPROTONOSUPPORT), errors.Is(err, syscall.EAFNOSUPPORT):
+		// system doesn't support auditing, skip
 		a.worthCheckingIPTables = true
+	case !errors.Is(err, nil):
+		return nil, err
 	}
+
+	auditStatus, err := auditClient.GetStatus()
+	if err != nil {
+		return nil, err
+	}
+	if auditStatus.Enabled == 0 {
+		if err = auditClient.SetEnabled(true, libaudit.WaitForReply); err != nil {
+			return nil, err
+		}
+	}
+
+	go a.setWorthCheckingIPTablesRoutine(auditClient, iptablesIdle)
 	go a.kubernetesServiceWatcher.Start()
 	go a.fixSystemTimeSkew()
 	return a, nil
@@ -75,7 +77,6 @@ func (a *agent) setWorthCheckingIPTablesRoutine(auditClient *libaudit.AuditClien
 			// time is monotonic, see https://pkg.go.dev/time#hdr-Monotonic_Clocks
 			elapsedSinceLastTrue := time.Since(latestTrue)
 			if elapsedSinceLastTrue >= iptablesIdle {
-				logrus.Debug("setWorthCheckingIPTablesRoutine(): setting to false")
 				a.worthCheckingIPTables = false
 			}
 			a.worthCheckingIPTablesMu.Unlock()
@@ -202,8 +203,6 @@ func (a *agent) LocalPorts(_ context.Context) ([]api.IPPort, error) {
 		}
 	}
 
-	logrus.Debugf("res from procnettcp: %v", res)
-
 	a.worthCheckingIPTablesMu.RLock()
 	worthCheckingIPTables := a.worthCheckingIPTables
 	a.worthCheckingIPTablesMu.RUnlock()
@@ -224,8 +223,6 @@ func (a *agent) LocalPorts(_ context.Context) ([]api.IPPort, error) {
 		a.latestIPTablesMu.RUnlock()
 	}
 
-	logrus.Debugf("latest iptables: %v", ipts)
-
 	for _, ipt := range ipts {
 		// Make sure the port isn't already listed from procnettcp
 		found := false
@@ -242,8 +239,6 @@ func (a *agent) LocalPorts(_ context.Context) ([]api.IPPort, error) {
 				})
 		}
 	}
-
-	logrus.Debugf("res after applying latest iptables: %v", res)
 
 	kubernetesEntries := a.kubernetesServiceWatcher.GetPorts()
 	for _, entry := range kubernetesEntries {
@@ -262,8 +257,6 @@ func (a *agent) LocalPorts(_ context.Context) ([]api.IPPort, error) {
 				})
 		}
 	}
-
-	logrus.Debugf("res after applying kubernetes: %v", res)
 
 	return res, nil
 }
