@@ -31,7 +31,7 @@ func installSystemdAction(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	vsock, err := cmd.Flags().GetInt("vsock-portock")
+	vsock, err := cmd.Flags().GetInt("vsock-port")
 	if err != nil {
 		return err
 	}

@@ -15,8 +15,9 @@ import (
 )
 
 const (
-	guestCommunicationsPrefix = `Computer\HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Virtualization\GuestCommunicationServices\`
-	magicVSOCKSuffix          = "-facb-11e6-bd58-64006a7986d3"
+	guestCommunicationsPrefix = `SOFTWARE\Microsoft\Windows NT\CurrentVersion\Virtualization\GuestCommunicationServices`
+	MagicVSOCKSuffix          = "-facb-11e6-bd58-64006a7986d3"
+	wslDistroInfoPrefix       = `SOFTWARE\Microsoft\Windows\CurrentVersion\Lxss`
 )
 
 func AddVSockRegistryKey(port int) error {
@@ -24,6 +25,7 @@ func AddVSockRegistryKey(port int) error {
 	if err != nil {
 		return err
 	}
+	defer rootKey.Close()
 
 	used, err := getUsedPorts(rootKey)
 	if err != nil {
@@ -34,7 +36,7 @@ func AddVSockRegistryKey(port int) error {
 		return fmt.Errorf("port %q in use", port)
 	}
 
-	vsockKeyPath := fmt.Sprintf(`%x%s`, port, magicVSOCKSuffix)
+	vsockKeyPath := fmt.Sprintf(`%x%s`, port, MagicVSOCKSuffix)
 	vSockKey, _, err := registry.CreateKey(
 		rootKey,
 		vsockKeyPath,
@@ -58,8 +60,9 @@ func RemoveVSockRegistryKey(port int) error {
 	if err != nil {
 		return err
 	}
+	defer rootKey.Close()
 
-	vsockKeyPath := fmt.Sprintf(`%x%s`, port, magicVSOCKSuffix)
+	vsockKeyPath := fmt.Sprintf(`%x%s`, port, MagicVSOCKSuffix)
 	if err := registry.DeleteKey(rootKey, vsockKeyPath); err != nil {
 		return fmt.Errorf(
 			"failed to create new key (%s%s): %w",
@@ -77,6 +80,7 @@ func IsPortFree(port int) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	defer rootKey.Close()
 
 	used, err := getUsedPorts(rootKey)
 	if err != nil {
@@ -91,7 +95,11 @@ func IsPortFree(port int) (bool, error) {
 }
 
 func getGuestCommunicationServicesKey() (registry.Key, error) {
-	rootKey, err := registry.OpenKey(registry.LOCAL_MACHINE, guestCommunicationsPrefix, registry.QUERY_VALUE)
+	rootKey, err := registry.OpenKey(
+		registry.LOCAL_MACHINE,
+		guestCommunicationsPrefix,
+		registry.WRITE|registry.READ,
+	)
 	if err != nil {
 		return 0, fmt.Errorf(
 			"failed to open GuestCommunicationServices key (%s): %w",
@@ -99,7 +107,6 @@ func getGuestCommunicationServicesKey() (registry.Key, error) {
 			err,
 		)
 	}
-	defer rootKey.Close()
 
 	return rootKey, nil
 }
@@ -112,7 +119,7 @@ func getUsedPorts(key registry.Key) ([]int, error) {
 
 	out := []int{}
 	for _, k := range keys {
-		split := strings.Split(k, magicVSOCKSuffix)
+		split := strings.Split(k, MagicVSOCKSuffix)
 		if len(split) == 2 {
 			i, err := strconv.Atoi(split[0])
 			if err != nil {
@@ -125,11 +132,61 @@ func getUsedPorts(key registry.Key) ([]int, error) {
 	return out, nil
 }
 
+// GetDistroID returns a DistroId GUID corresponding to a Lima instance name.
+func GetDistroID(name string) (string, error) {
+	rootKey, err := registry.OpenKey(
+		registry.CURRENT_USER,
+		wslDistroInfoPrefix,
+		registry.READ,
+	)
+	if err != nil {
+		return "", fmt.Errorf(
+			"failed to open Lxss key (%s): %w",
+			wslDistroInfoPrefix,
+			err,
+		)
+	}
+	defer rootKey.Close()
+
+	keys, err := rootKey.ReadSubKeyNames(-1)
+
+	if err != nil {
+		return "", fmt.Errorf("failed to read subkey names for %s: %w", wslDistroInfoPrefix, err)
+	}
+
+	var out string
+	for _, k := range keys {
+		subKey, err := registry.OpenKey(
+			registry.CURRENT_USER,
+			fmt.Sprintf(`%s\%s`, wslDistroInfoPrefix, k),
+			registry.READ,
+		)
+		if err != nil {
+			return "", fmt.Errorf("failed to read subkey %q for key %q: %w", k, wslDistroInfoPrefix, err)
+		}
+		dn, _, err := subKey.GetStringValue("DistributionName")
+		if err != nil {
+			return "", fmt.Errorf("failed to read 'DistributionName' value for subkey %q of %q: %w", k, wslDistroInfoPrefix, err)
+		}
+		if dn == name {
+			out = k
+			break
+		}
+	}
+
+	if out == "" {
+		return "", fmt.Errorf("failed to find matching DistroID for %q", name)
+	}
+
+	return out, nil
+}
+
 func GetRandomFreePort(min, max int) (int, error) {
 	rootKey, err := getGuestCommunicationServicesKey()
 	if err != nil {
 		return 0, err
 	}
+	defer rootKey.Close()
 
 	used, err := getUsedPorts(rootKey)
 	if err != nil {

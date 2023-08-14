@@ -30,6 +30,9 @@ func New(newTicker func() (<-chan time.Time, func()), iptablesIdle time.Duration
 	case errors.Is(err, syscall.EPROTONOSUPPORT), errors.Is(err, syscall.EAFNOSUPPORT):
 		// system doesn't support auditing, skip
 		a.worthCheckingIPTables = true
+		go a.kubernetesServiceWatcher.Start()
+		go a.fixSystemTimeSkew()
+		return a, nil
 	case !errors.Is(err, nil):
 		return nil, err
 	}

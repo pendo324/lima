@@ -31,7 +31,7 @@ type GuestAgentClient interface {
 
 // NewGuestAgentClient creates a client.
 // remote is a path to the UNIX socket, without unix:// prefix or a remote hostname/IP address.
-func NewGuestAgentClient(remote string, proto Proto) (GuestAgentClient, error) {
+func NewGuestAgentClient(remote string, proto Proto, instanceName string) (GuestAgentClient, error) {
 	var hc *http.Client
 	switch proto {
 	case TCP:
@@ -58,7 +58,10 @@ func NewGuestAgentClient(remote string, proto Proto) (GuestAgentClient, error) {
 		if err != nil {
 			return nil, err
 		}
-		hc = httpclientutil.NewHTTPClientWithVSockPort(port)
+		hc, err = newVSockGuestAgentClient(port, instanceName)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return NewGuestAgentClientWithHTTPClient(hc), nil

@@ -46,7 +46,7 @@ func RunUTF16leCommand(args []string, opts ...Opt) (string, error) {
 	}
 	outString, err := ioutilx.FromUTF16leToString(out)
 	if err != nil {
-		return "", fmt.Errorf("failed to convert output from UTF16 when running wsl command wsl.exe %v, err: %w", args, err)
+		return "", fmt.Errorf("failed to convert output from UTF16 when running command %v, err: %w", args, err)
 	}
 	return outString, nil
 }
