@@ -96,7 +96,7 @@ func (pf *portForwarder) OnEvent(ctx context.Context, ev api.Event, vmType, inst
 		if local == "" {
 			continue
 		}
-		logrus.Infof("Stopping forwarding TCP from %s to %s", remote, local)
+		logrus.Debugf("Stopping forwarding TCP from %s to %s", remote, local)
 
 		if err := forwardTCP(ctx, pf.sshConfig, pf.sshHostPort, local, remote, verbCancel); err != nil {
 			logrus.WithError(err).Warnf("failed to stop forwarding tcp port %d", f.Port)
@@ -105,10 +105,10 @@ func (pf *portForwarder) OnEvent(ctx context.Context, ev api.Event, vmType, inst
 	for _, f := range ev.LocalPortsAdded {
 		local, remote := pf.forwardingAddresses(f, localUnixIP)
 		if local == "" {
-			logrus.Infof("Not forwarding TCP %s", remote)
+			logrus.Debugf("Not forwarding TCP %s", remote)
 			continue
 		}
-		logrus.Infof("Forwarding TCP from %s to %s", remote, local)
+		logrus.Debugf("Forwarding TCP from %s to %s", remote, local)
 		if err := forwardTCP(ctx, pf.sshConfig, pf.sshHostPort, local, remote, verbForward); err != nil {
 			logrus.WithError(err).Warnf("failed to set up forwarding tcp port %d (negligible if already forwarded)", f.Port)
 		}
