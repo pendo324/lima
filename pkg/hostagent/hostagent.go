@@ -312,10 +312,6 @@ func (a *HostAgent) Run(ctx context.Context) error {
 		return err
 	}
 
-	if err := registerVSockPort(a.vSockPort); err != nil {
-		return fmt.Errorf("failed to register VSock port %q: %w", a.vSockPort, err)
-	}
-
 	errCh, err := a.driver.Start(ctx)
 	if err != nil {
 		return err
