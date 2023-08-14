@@ -637,7 +637,7 @@ func forwardSSH(ctx context.Context, sshConfig *ssh.SSHConfig, port int, local, 
 		"127.0.0.1",
 		"--",
 	)
-	logrus.Infof("forwarding SSH with args: %v", args)
+	logrus.Debugf("forwarding SSH with args: %v", args)
 	if strings.HasPrefix(local, "/") {
 		switch verb {
 		case verbForward:
