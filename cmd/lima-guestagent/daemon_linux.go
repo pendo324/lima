@@ -81,7 +81,7 @@ func daemonAction(cmd *cobra.Command, _ []string) error {
 			return err
 		}
 		l = vsockL
-		logrus.Infof("serving the guest agent on vsock port: %d", tcpPort)
+		logrus.Infof("serving the guest agent on vsock port: %d", vSockPort)
 	} else if tcpPort != 0 {
 		tcpL, err := net.Listen("tcp", fmt.Sprintf(":%d", tcpPort))
 		if err != nil {
