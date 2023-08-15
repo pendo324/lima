@@ -438,6 +438,11 @@ hostResolver:
 # 🟢 Builtin default: /usr/local
 guestInstallPrefix: null
 
+# Adjust options for the guestAgent which runs inside of the Linux VM
+guestAgent:
+  # 🟢 Builtin default: UNIX (macOS, Linux), VSOCK (Windows/WSL2)
+  protocol: null
+
 # ===================================================================== #
 # GLOBAL DEFAULTS AND OVERRIDES
 # ===================================================================== #
