@@ -6,8 +6,7 @@ package windows
 import (
 	"encoding/json"
 	"fmt"
-
-	"github.com/lima-vm/lima/pkg/executil"
+	"os/exec"
 )
 
 type CommandLineJSON []struct {
@@ -16,7 +15,7 @@ type CommandLineJSON []struct {
 
 // GetProcessCommandLine returns a slice of string containing all commandlines for a given process name.
 func GetProcessCommandLine(name string) ([]string, error) {
-	out, err := executil.RunUTF16leCommand([]string{
+	out, err := exec.Command(
 		"powershell.exe",
 		"-nologo",
 		"-noprofile",
@@ -24,8 +23,7 @@ func GetProcessCommandLine(name string) ([]string, error) {
 			`Get-CimInstance Win32_Process -Filter "name = '%s'" | Select CommandLine | ConvertTo-Json`,
 			name,
 		),
-	})
-
+	).CombinedOutput()
 	if err != nil {
 		return nil, err
 	}
