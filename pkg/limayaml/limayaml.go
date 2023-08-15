@@ -37,6 +37,7 @@ type LimaYAML struct {
 	PropagateProxyEnv *bool          `yaml:"propagateProxyEnv,omitempty" json:"propagateProxyEnv,omitempty"`
 	CACertificates    CACertificates `yaml:"caCerts,omitempty" json:"caCerts,omitempty"`
 	Rosetta           Rosetta        `yaml:"rosetta,omitempty" json:"rosetta,omitempty"`
+	GuestAgent        GuestAgent     `yaml:"guestAgent,omitempty" json:"guestAgent,omitempty"`
 }
 
 type Arch = string
@@ -239,6 +240,18 @@ type CACertificates struct {
 	RemoveDefaults *bool    `yaml:"removeDefaults,omitempty" json:"removeDefaults,omitempty"` // default: false
 	Files          []string `yaml:"files,omitempty" json:"files,omitempty"`
 	Certs          []string `yaml:"certs,omitempty" json:"certs,omitempty"`
+}
+
+type GuestAgentProto = string
+
+const (
+	GuestAgentUNIXProto  GuestAgentProto = "UNIX"
+	GuestAgentVSockProto GuestAgentProto = "VSOCK"
+	GuestAgentTCPProto   GuestAgentProto = "TCP"
+)
+
+type GuestAgent struct {
+	Protocol *string `yaml:"protocol,omitempty" json:"protocol,omitempty"`
 }
 
 // DEPRECATED types below

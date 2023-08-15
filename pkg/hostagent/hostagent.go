@@ -54,8 +54,7 @@ type HostAgent struct {
 	eventEnc   *json.Encoder
 	eventEncMu sync.Mutex
 
-	guestAgentProto guestagentclient.Proto
-	vSockPort       int
+	vSockPort int
 }
 
 type options struct {
@@ -112,10 +111,8 @@ func New(instName string, stdout io.Writer, sigintCh chan os.Signal, opts ...Opt
 		}
 	}
 
-	proto := guestagentclient.UNIX
 	vSockPort := 0
-	if *y.VMType == limayaml.WSL {
-		proto = guestagentclient.VSOCK
+	if *y.GuestAgent.Protocol == limayaml.GuestAgentVSockProto {
 		port, err := getFreeVSockPort()
 		if err != nil {
 			logrus.WithError(err).Error("failed to get free VSock port")
@@ -170,7 +167,6 @@ func New(instName string, stdout io.Writer, sigintCh chan os.Signal, opts ...Opt
 		driver:          limaDriver,
 		sigintCh:        sigintCh,
 		eventEnc:        json.NewEncoder(stdout),
-		guestAgentProto: proto,
 		vSockPort:       vSockPort,
 	}
 	return a, nil
@@ -551,17 +547,17 @@ func (a *HostAgent) watchGuestAgentEvents(ctx context.Context) {
 	})
 
 	guestSocketAddr := localUnix
-	if a.guestAgentProto == guestagentclient.VSOCK {
+	if *a.y.GuestAgent.Protocol == limayaml.GuestAgentVSockProto {
 		guestSocketAddr = fmt.Sprintf("127.0.0.1:%d", a.vSockPort)
 	}
 
 	for {
-		if !isGuestAgentSocketAccessible(ctx, guestSocketAddr, a.guestAgentProto, a.instName) {
-			if a.guestAgentProto != guestagentclient.VSOCK {
+		if !isGuestAgentSocketAccessible(ctx, guestSocketAddr, *a.y.GuestAgent.Protocol, a.instName) {
+			if *a.y.GuestAgent.Protocol != limayaml.GuestAgentVSockProto {
 				_ = forwardSSH(ctx, a.sshConfig, a.sshLocalPort, localUnix, remoteUnix, verbForward, false)
 			}
 		}
-		if err := a.processGuestAgentEvents(ctx, guestSocketAddr, a.guestAgentProto, a.instName); err != nil {
+		if err := a.processGuestAgentEvents(ctx, guestSocketAddr, *a.y.GuestAgent.Protocol, a.instName); err != nil {
 			if !errors.Is(err, context.Canceled) {
 				logrus.WithError(err).Warn("connection to the guest agent was closed unexpectedly")
 			}
@@ -574,7 +570,7 @@ func (a *HostAgent) watchGuestAgentEvents(ctx context.Context) {
 	}
 }
 
-func isGuestAgentSocketAccessible(ctx context.Context, localUnix string, proto guestagentclient.Proto, instanceName string) bool {
+func isGuestAgentSocketAccessible(ctx context.Context, localUnix string, proto limayaml.GuestAgentProto, instanceName string) bool {
 	client, err := guestagentclient.NewGuestAgentClient(localUnix, proto, instanceName)
 	if err != nil {
 		return false
@@ -583,7 +579,7 @@ func isGuestAgentSocketAccessible(ctx context.Context, localUnix string, proto g
 	return err == nil
 }
 
-func (a *HostAgent) processGuestAgentEvents(ctx context.Context, localUnix string, proto guestagentclient.Proto, instanceName string) error {
+func (a *HostAgent) processGuestAgentEvents(ctx context.Context, localUnix string, proto limayaml.GuestAgentProto, instanceName string) error {
 	client, err := guestagentclient.NewGuestAgentClient(localUnix, proto, instanceName)
 	if err != nil {
 		return err

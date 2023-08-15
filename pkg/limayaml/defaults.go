@@ -658,6 +658,19 @@ func FillDefault(y, d, o *LimaYAML, filePath string) {
 	if y.Rosetta.BinFmt == nil {
 		y.Rosetta.BinFmt = pointer.Bool(false)
 	}
+
+	if y.GuestAgent.Protocol == nil {
+		y.GuestAgent.Protocol = d.GuestAgent.Protocol
+	}
+	if o.GuestAgent.Protocol != nil {
+		y.GuestAgent.Protocol = o.GuestAgent.Protocol
+	}
+	if y.GuestAgent.Protocol == nil {
+		y.GuestAgent.Protocol = pointer.String(GuestAgentUNIXProto)
+		if runtime.GOOS == "windows" {
+			y.GuestAgent.Protocol = pointer.String(GuestAgentVSockProto)
+		}
+	}
 }
 
 func executeGuestTemplate(format string) (bytes.Buffer, error) {
