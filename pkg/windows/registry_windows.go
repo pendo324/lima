@@ -20,6 +20,7 @@ const (
 	wslDistroInfoPrefix       = `SOFTWARE\Microsoft\Windows\CurrentVersion\Lxss`
 )
 
+// AddVSockRegistryKey makes a vsock server running on the host acceessible in guests.
 func AddVSockRegistryKey(port int) error {
 	rootKey, err := getGuestCommunicationServicesKey()
 	if err != nil {
@@ -55,6 +56,7 @@ func AddVSockRegistryKey(port int) error {
 	return nil
 }
 
+// RemoveVSockRegistryKey removes entries created by AddVSockRegistryKey.
 func RemoveVSockRegistryKey(port int) error {
 	rootKey, err := getGuestCommunicationServicesKey()
 	if err != nil {
@@ -75,7 +77,8 @@ func RemoveVSockRegistryKey(port int) error {
 	return nil
 }
 
-func IsPortFree(port int) (bool, error) {
+// IsVSockPortFree determines if a VSock port has been registiered already.
+func IsVSockPortFree(port int) (bool, error) {
 	rootKey, err := getGuestCommunicationServicesKey()
 	if err != nil {
 		return false, err
@@ -92,44 +95,6 @@ func IsPortFree(port int) (bool, error) {
 	}
 
 	return true, nil
-}
-
-func getGuestCommunicationServicesKey() (registry.Key, error) {
-	rootKey, err := registry.OpenKey(
-		registry.LOCAL_MACHINE,
-		guestCommunicationsPrefix,
-		registry.WRITE|registry.READ,
-	)
-	if err != nil {
-		return 0, fmt.Errorf(
-			"failed to open GuestCommunicationServices key (%s): %w",
-			guestCommunicationsPrefix,
-			err,
-		)
-	}
-
-	return rootKey, nil
-}
-
-func getUsedPorts(key registry.Key) ([]int, error) {
-	keys, err := key.ReadSubKeyNames(-1)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read subkey names for %s: %w", guestCommunicationsPrefix, err)
-	}
-
-	out := []int{}
-	for _, k := range keys {
-		split := strings.Split(k, MagicVSOCKSuffix)
-		if len(split) == 2 {
-			i, err := strconv.Atoi(split[0])
-			if err != nil {
-				return nil, fmt.Errorf("failed convert %q to int: %w", split[0], err)
-			}
-			out = append(out, i)
-		}
-	}
-
-	return out, nil
 }
 
 // GetDistroID returns a DistroId GUID corresponding to a Lima instance name.
@@ -181,7 +146,8 @@ func GetDistroID(name string) (string, error) {
 	return out, nil
 }
 
-func GetRandomFreePort(min, max int) (int, error) {
+// GetRandomFreeVSockPort gets a list of all registered VSock ports and returns a non-registered port.
+func GetRandomFreeVSockPort(min, max int) (int, error) {
 	rootKey, err := getGuestCommunicationServicesKey()
 	if err != nil {
 		return 0, err
@@ -218,4 +184,42 @@ func GetRandomFreePort(min, max int) (int, error) {
 	}
 
 	return tree[0].offset + v, nil
+}
+
+func getGuestCommunicationServicesKey() (registry.Key, error) {
+	rootKey, err := registry.OpenKey(
+		registry.LOCAL_MACHINE,
+		guestCommunicationsPrefix,
+		registry.WRITE|registry.READ,
+	)
+	if err != nil {
+		return 0, fmt.Errorf(
+			"failed to open GuestCommunicationServices key (%s): %w",
+			guestCommunicationsPrefix,
+			err,
+		)
+	}
+
+	return rootKey, nil
+}
+
+func getUsedPorts(key registry.Key) ([]int, error) {
+	keys, err := key.ReadSubKeyNames(-1)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read subkey names for %s: %w", guestCommunicationsPrefix, err)
+	}
+
+	out := []int{}
+	for _, k := range keys {
+		split := strings.Split(k, MagicVSOCKSuffix)
+		if len(split) == 2 {
+			i, err := strconv.Atoi(split[0])
+			if err != nil {
+				return nil, fmt.Errorf("failed convert %q to int: %w", split[0], err)
+			}
+			out = append(out, i)
+		}
+	}
+
+	return out, nil
 }
