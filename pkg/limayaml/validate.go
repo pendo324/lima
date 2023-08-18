@@ -63,7 +63,7 @@ func Validate(y LimaYAML, warn bool) error {
 			return fmt.Errorf("field `arch` must be %q for VZ; got %q", NewArch(runtime.GOARCH), *y.Arch)
 		}
 	default:
-		return fmt.Errorf("field `vmType` must be %q or %q; got %q", QEMU, VZ, *y.VMType)
+		return fmt.Errorf("field `vmType` must be %q, %q, or %q; got %q", QEMU, VZ, WSL2, *y.VMType)
 	}
 
 	if len(y.Images) == 0 {
