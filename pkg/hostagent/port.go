@@ -2,13 +2,11 @@ package hostagent
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"runtime"
 
 	"github.com/lima-vm/lima/pkg/guestagent/api"
 	"github.com/lima-vm/lima/pkg/limayaml"
-	"github.com/lima-vm/lima/pkg/store"
 	"github.com/lima-vm/sshocker/pkg/ssh"
 	"github.com/sirupsen/logrus"
 )

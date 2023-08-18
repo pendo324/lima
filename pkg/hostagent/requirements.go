@@ -7,7 +7,6 @@ import (
 
 	guestagentclient "github.com/lima-vm/lima/pkg/guestagent/api/client"
 	"github.com/lima-vm/lima/pkg/limayaml"
-	"github.com/lima-vm/lima/pkg/store"
 	"github.com/lima-vm/sshocker/pkg/ssh"
 	"github.com/sirupsen/logrus"
 )
