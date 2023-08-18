@@ -1,0 +1,11 @@
+# This template requires Lima v0.18.0 or later and only works on Windows versions
+# that support WSL2 (Windows 10 Build >= 19041, all Windows 11).
+vmType: wsl2
+
+images:
+# Source: https://github.com/runfinch/finch-core/blob/main/Dockerfile
+- location: "https://deps.runfinch.com/common/aarch64/finch-rootfs-production-arm64-1690920104.tar.zst"
+  arch: "x86_64"
+  digest: "sha256:dd48cbf679539d915a2d47d61978e1fe43cb6248d40761d70d3da7b82d630fc5"
+
+mountType: wsl2

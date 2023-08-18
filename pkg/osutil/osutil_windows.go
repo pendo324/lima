@@ -17,7 +17,7 @@ type Stat struct {
 	Gid uint32 //nolint:revive
 }
 
-func SysStat(fi fs.FileInfo) (Stat, bool) {
+func SysStat(_ fs.FileInfo) (Stat, bool) {
 	return Stat{Uid: 0, Gid: 0}, false
 }
 
@@ -29,10 +29,10 @@ const SigKill = Signal(9)
 
 type Signal int
 
-func SysKill(pid int, sig Signal) error {
+func SysKill(pid int, _ Signal) error {
 	return windows.GenerateConsoleCtrlEvent(syscall.CTRL_BREAK_EVENT, uint32(pid))
 }
 
-func Ftruncate(fd int, length int64) (err error) {
+func Ftruncate(_ int, _ int64) (err error) {
 	return fmt.Errorf("unimplemented")
 }

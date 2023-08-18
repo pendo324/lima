@@ -5,13 +5,9 @@ Translations: [日本語(Japanese)](README.ja.md) [简体中文（Simplified Chi
 
 ![Lima logo](./docs/images/lima-logo-01.svg)
 
-# Lima: Linux virtual machines (on macOS, in most cases)
+# Lima: Linux Machines
 
-Lima launches Linux virtual machines with automatic file sharing and port forwarding (similar to WSL2), and [containerd](https://containerd.io).
-
-Lima can be considered as a some sort of unofficial "containerd for Mac".
-
-Lima is expected to be used on macOS hosts, but can be used on Linux hosts as well.
+Lima launches Linux virtual machines with automatic file sharing and port forwarding (similar to WSL2).
 
 ✅ Automatic file sharing
 
@@ -37,8 +33,9 @@ The [talks](docs/talks.md) page contains links to slides and video from conferen
 
 ## Motivation
 
-The goal of Lima is to promote [containerd](https://containerd.io) including [nerdctl (contaiNERD ctl)](https://github.com/containerd/nerdctl)
+The original goal of Lima was to promote [containerd](https://containerd.io) including [nerdctl (contaiNERD ctl)](https://github.com/containerd/nerdctl)
 to Mac users, but Lima can be used for non-container applications as well.
+Lima also supports non-macOS hosts (Linux, NetBSD, etc.).
 
 ## Community
 ### Adopters
@@ -105,7 +102,7 @@ For the usage of containerd and nerdctl (contaiNERD ctl), visit <https://github.
 ## Getting started
 ### Installation
 
-[Homebrew package](https://github.com/Homebrew/homebrew-core/blob/master/Formula/lima.rb) is available.
+[Homebrew package](https://github.com/Homebrew/homebrew-core/blob/master/Formula/l/lima.rb) is available.
 
 ```console
 brew install lima
@@ -374,7 +371,6 @@ Container image builder examples:
 Container orchestrator examples:
 - [`./examples/k3s.yaml`](./examples/k3s.yaml): Kubernetes (k3s)
 - [`./examples/k8s.yaml`](./examples/k8s.yaml): Kubernetes (kubeadm)
-- [`./examples/nomad.yaml`](./examples/nomad.yaml): Nomad
 
 The default Ubuntu image also contains LXD. Run `lima sudo lxc init` to set up LXD.
 

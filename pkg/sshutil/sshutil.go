@@ -137,7 +137,7 @@ func CommonOpts(useDotSSH bool) ([]string, error) {
 	}
 	var opts []string
 	if runtime.GOOS == "windows" {
-		privateKeyPath = ioutilx.CannonicalWindowsPath(privateKeyPath)
+		privateKeyPath = ioutilx.CanonicalWindowsPath(privateKeyPath)
 		opts = []string{"IdentityFile=" + privateKeyPath}
 	} else {
 		opts = []string{"IdentityFile=\"" + privateKeyPath + "\""}
@@ -233,7 +233,7 @@ func SSHOpts(instDir string, useDotSSH, forwardAgent bool, forwardX11 bool, forw
 	}
 	controlPath := fmt.Sprintf("ControlPath=\"%s\"", controlSock)
 	if runtime.GOOS == "windows" {
-		controlSock = ioutilx.CannonicalWindowsPath(controlSock)
+		controlSock = ioutilx.CanonicalWindowsPath(controlSock)
 		controlPath = fmt.Sprintf("ControlPath=%s", controlSock)
 	}
 	opts = append(opts,

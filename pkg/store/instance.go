@@ -32,7 +32,7 @@ type Status = string
 
 const (
 	StatusUnknown       Status = ""
-	StatusUnititialized Status = "Unititialized"
+	StatusUninitialized Status = "Uninitialized"
 	StatusInstalling    Status = "Installing"
 	StatusBroken        Status = "Broken"
 	StatusStopped       Status = "Stopped"
@@ -58,8 +58,6 @@ type Instance struct {
 	DriverPID       int                `json:"driverPID,omitempty"`
 	Errors          []error            `json:"errors,omitempty"`
 	Config          *limayaml.LimaYAML `json:"config,omitempty"`
-	RootFsPath      string             `json:"rootfs,omitempty"`
-	DistroName      string             `json:"distroName,omitempty"`
 	SSHAddress      string             `json:"sshAddress,omitempty"`
 }
 
@@ -126,9 +124,8 @@ func Inspect(instName string) (*Instance, error) {
 		}
 	}
 
-	if inst.VMType == limayaml.WSL {
-		inst.DistroName = fmt.Sprintf("%s-%s", "lima", inst.Name)
-		status, err := GetWslStatus(instName, inst.DistroName)
+	if inst.VMType == limayaml.WSL2 {
+		status, err := GetWslStatus(instName)
 		if err != nil {
 			inst.Status = StatusBroken
 			inst.Errors = append(inst.Errors, err)
@@ -138,8 +135,8 @@ func Inspect(instName string) (*Instance, error) {
 
 		inst.SSHLocalPort = 22
 
-		if inst.Status == StatusStopped || inst.Status == StatusRunning {
-			sshAddr, err := GetWslSSHAddress(instName, inst.DistroName)
+		if inst.Status == StatusRunning {
+			sshAddr, err := GetWslSSHAddress(instName)
 			if err == nil {
 				inst.SSHAddress = sshAddr
 			} else {
@@ -410,11 +407,15 @@ func PrintInstances(w io.Writer, instances []*Instance, format string, options *
 	return nil
 }
 
-func GetWslStatus(instName, distroName string) (string, error) {
-	// Expected output (whitespace preserved):
-	// PS > wsl --list --verbose
-	//   NAME      STATE           VERSION
-	// * Ubuntu    Stopped         2
+// GetWslStatus runs `wsl --list --verbose` and parses its output
+// Expected output (whitespace preserved):
+// PS > wsl --list --verbose
+//
+//	NAME      STATE           VERSION
+//
+// * Ubuntu    Stopped         2
+func GetWslStatus(instName string) (string, error) {
+	distroName := "lima-" + instName
 	out, err := executil.RunUTF16leCommand([]string{
 		"wsl.exe",
 		"--list",
@@ -430,8 +431,6 @@ func GetWslStatus(instName, distroName string) (string, error) {
 
 	var instState string
 	// wsl --list --verbose may have differernt headers depending on localization, just split by line
-	// Windows uses little endian by default, use unicode.UseBOM policy to retrieve BOM from the text,
-	// and unicode.LittleEndian as a fallback
 	for _, rows := range strings.Split(strings.ReplaceAll(string(out), "\r\n", "\n"), "\n") {
 		cols := regexp.MustCompile(`\s+`).Split(strings.TrimSpace(rows), -1)
 		nameIdx := 0
@@ -446,20 +445,21 @@ func GetWslStatus(instName, distroName string) (string, error) {
 	}
 
 	if instState == "" {
-		return StatusUnititialized, nil
+		return StatusUninitialized, nil
 	}
 
 	return instState, nil
 }
 
-func GetWslSSHAddress(instName, distroName string) (string, error) {
-	// Expected output (whitespace preserved, [] for optional):
-	// PS > wsl -d <distroName> bash -c hostname -I | cut -d' ' -f1
-	// 168.1.1.1 [10.0.0.1]
+// GetWslSSHAddress runs a hostname command to get the IP from inside of a wsl2 VM.
+// Expected output (whitespace preserved, [] for optional):
+// PS > wsl -d <distroName> bash -c hostname -I | cut -d' ' -f1
+// 168.1.1.1 [10.0.0.1]
+func GetWslSSHAddress(instName string) (string, error) {
+	distroName := "lima-" + instName
 	cmd := exec.Command("wsl.exe", "-d", distroName, "bash", "-c", `hostname -I | cut -d ' ' -f1`)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		logrus.Debugf("outString: %s", out)
 		return "", fmt.Errorf("failed to get hostname for instance %s, err: %w", instName, err)
 	}
 

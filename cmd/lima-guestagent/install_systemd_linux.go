@@ -26,7 +26,7 @@ func newInstallSystemdCommand() *cobra.Command {
 	return installSystemdCommand
 }
 
-func installSystemdAction(cmd *cobra.Command, args []string) error {
+func installSystemdAction(cmd *cobra.Command, _ []string) error {
 	tcp, err := cmd.Flags().GetInt("tcp-port")
 	if err != nil {
 		return err
@@ -52,11 +52,11 @@ func installSystemdAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	logrus.Infof("Written file %q", unitPath)
-	argss := [][]string{
+	args := [][]string{
 		{"daemon-reload"},
 		{"enable", "--now", "lima-guestagent.service"},
 	}
-	for _, args := range argss {
+	for _, args := range args {
 		cmd := exec.Command("systemctl", append([]string{"--system"}, args...)...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr

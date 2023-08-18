@@ -80,23 +80,15 @@ func (pf *portForwarder) forwardingAddresses(guest api.IPPort, localUnixIP net.I
 	return "", guest.String()
 }
 
-func (pf *portForwarder) OnEvent(ctx context.Context, ev api.Event, vmType, instName string) {
-	localUnixIP := net.ParseIP("127.0.0.1")
-	if vmType == limayaml.WSL {
-		instSSHAddress, err := store.GetWslSSHAddress(instName, fmt.Sprintf("lima-%s", instName))
-		if err == nil {
-			localUnixIP = net.ParseIP(instSSHAddress)
-		} else {
-			logrus.WithError(err).Errorf("failed to get WSL SSH Address")
-		}
-	}
+func (pf *portForwarder) OnEvent(ctx context.Context, ev api.Event, instSSHAddress string) {
+	localUnixIP := net.ParseIP(instSSHAddress)
 
 	for _, f := range ev.LocalPortsRemoved {
 		local, remote := pf.forwardingAddresses(f, localUnixIP)
 		if local == "" {
 			continue
 		}
-		logrus.Debugf("Stopping forwarding TCP from %s to %s", remote, local)
+		logrus.Infof("Stopping forwarding TCP from %s to %s", remote, local)
 
 		if err := forwardTCP(ctx, pf.sshConfig, pf.sshHostPort, local, remote, verbCancel); err != nil {
 			logrus.WithError(err).Warnf("failed to stop forwarding tcp port %d", f.Port)

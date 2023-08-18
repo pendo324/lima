@@ -1,10 +1,11 @@
 package hostagent
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
+	guestagentclient "github.com/lima-vm/lima/pkg/guestagent/api/client"
 	"github.com/lima-vm/lima/pkg/limayaml"
 	"github.com/lima-vm/lima/pkg/store"
 	"github.com/lima-vm/sshocker/pkg/ssh"
@@ -29,10 +30,10 @@ func (a *HostAgent) waitForRequirements(label string, requirements []requirement
 			}
 			if req.fatal {
 				logrus.Infof("No further %s requirements will be checked", label)
-				return multierror.Append(mErr, fmt.Errorf("failed to satisfy the %s requirement %d of %d %q: %s; skipping further checks: %w", label, i+1, len(requirements), req.description, req.debugHint, err))
+				return errors.Join(mErr, fmt.Errorf("failed to satisfy the %s requirement %d of %d %q: %s; skipping further checks: %w", label, i+1, len(requirements), req.description, req.debugHint, err))
 			}
 			if j == retries-1 {
-				mErr = multierror.Append(mErr, fmt.Errorf("failed to satisfy the %s requirement %d of %d %q: %s: %w", label, i+1, len(requirements), req.description, req.debugHint, err))
+				mErr = errors.Join(mErr, fmt.Errorf("failed to satisfy the %s requirement %d of %d %q: %s: %w", label, i+1, len(requirements), req.description, req.debugHint, err))
 				break retryLoop
 			}
 			time.Sleep(10 * time.Second)
@@ -43,15 +44,7 @@ func (a *HostAgent) waitForRequirements(label string, requirements []requirement
 
 func (a *HostAgent) waitForRequirement(r requirement) error {
 	logrus.Debugf("executing script %q", r.description)
-	sshAddr := "127.0.0.1"
-	if *a.y.VMType == limayaml.WSL {
-		remoteAddr, err := store.GetWslSSHAddress(a.instName, fmt.Sprintf("lima-%s", a.instName))
-		if err != nil {
-			logrus.Errorf("failed to get remote SSH address: %v", err)
-		}
-		sshAddr = remoteAddr
-	}
-	stdout, stderr, err := ssh.ExecuteScript(sshAddr, a.sshLocalPort, a.sshConfig, r.script, r.description)
+	stdout, stderr, err := ssh.ExecuteScript(a.instSSHAddress, a.sshLocalPort, a.sshConfig, r.script, r.description)
 	logrus.Debugf("stdout=%q, stderr=%q, err=%v", stdout, stderr, err)
 	if err != nil {
 		return fmt.Errorf("stdout=%q, stderr=%q: %w", stdout, stderr, err)
@@ -124,7 +117,7 @@ fi
 		})
 
 	}
-	if *a.y.GuestAgent.Protocol == limayaml.GuestAgentVSockProto {
+	if a.guestAgentProto == guestagentclient.VSOCK {
 		req = append(req, requirement{
 			description: "the guest agent to be running",
 			script: fmt.Sprintf(`#!/bin/bash

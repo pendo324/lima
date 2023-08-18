@@ -160,7 +160,3 @@ func (plf *pseudoLoopbackForwarder) Close() error {
 func getFreeVSockPort() (int, error) {
 	return 0, nil
 }
-
-func registerVSockPort(port int) error {
-	return nil
-}

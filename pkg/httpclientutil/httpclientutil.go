@@ -9,38 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
-	"os"
-	"runtime"
 
 	"github.com/lima-vm/lima/pkg/httputil"
 )
-
-// NewHTTPClientWithSocketPath creates a client.
-// socketPath is a path to the UNIX socket, without unix:// prefix.
-func NewHTTPClientWithSocketPath(socketPath string) (*http.Client, error) {
-	// https://github.com/adrg/xdg/pull/14
-	// TODO: move to separate file for compile time check instead of runtime
-	if runtime.GOOS == "windows" {
-		if _, err := os.Lstat(socketPath); err != nil {
-			return nil, err
-		}
-	} else {
-		if _, err := os.Stat(socketPath); err != nil {
-			return nil, err
-		}
-	}
-	hc := &http.Client{
-		Transport: &http.Transport{
-			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-				var d net.Dialer
-				return d.DialContext(ctx, "unix", socketPath)
-			},
-		},
-	}
-	return hc, nil
-}
 
 // Get calls HTTP GET and verifies that the status code is 2XX .
 func Get(ctx context.Context, c *http.Client, url string) (*http.Response, error) {

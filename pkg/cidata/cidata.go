@@ -306,7 +306,7 @@ func GenerateISO9660(instDir, name string, y *limayaml.LimaYAML, udpDNSLocalPort
 		}
 	}
 
-	guestAgentBinary, err := GuestAgentBinary(*y.Arch)
+	guestAgentBinary, err := GuestAgentBinary(*y.OS, *y.Arch)
 	if err != nil {
 		return err
 	}
@@ -329,7 +329,7 @@ func GenerateISO9660(instDir, name string, y *limayaml.LimaYAML, udpDNSLocalPort
 		})
 	}
 
-	if args.VMType == limayaml.WSL {
+	if args.VMType == limayaml.WSL2 {
 		layout = append(layout, iso9660util.Entry{
 			Path:   "ssh_authorized_keys",
 			Reader: strings.NewReader(strings.Join(args.SSHPubKeys, "\n")),
@@ -340,7 +340,10 @@ func GenerateISO9660(instDir, name string, y *limayaml.LimaYAML, udpDNSLocalPort
 	return iso9660util.Write(filepath.Join(instDir, filenames.CIDataISO), "cidata", layout)
 }
 
-func GuestAgentBinary(arch string) (io.ReadCloser, error) {
+func GuestAgentBinary(ostype limayaml.OS, arch limayaml.Arch) (io.ReadCloser, error) {
+	if ostype == "" {
+		return nil, errors.New("os must be set")
+	}
 	if arch == "" {
 		return nil, errors.New("arch must be set")
 	}
@@ -348,7 +351,7 @@ func GuestAgentBinary(arch string) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	gaPath := filepath.Join(dir, "lima-guestagent.Linux-"+arch)
+	gaPath := filepath.Join(dir, "lima-guestagent."+ostype+"-"+arch)
 	return os.Open(gaPath)
 }
 

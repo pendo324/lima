@@ -42,6 +42,11 @@ func validateFileObject(f File, fieldName string) error {
 }
 
 func Validate(y LimaYAML, warn bool) error {
+	switch *y.OS {
+	case LINUX:
+	default:
+		return fmt.Errorf("field `os` must be %q; got %q", LINUX, *y.OS)
+	}
 	switch *y.Arch {
 	case X8664, AARCH64, ARMV7L, RISCV64:
 	default:
@@ -51,7 +56,7 @@ func Validate(y LimaYAML, warn bool) error {
 	switch *y.VMType {
 	case QEMU:
 		// NOP
-	case WSL:
+	case WSL2:
 		// NOP
 	case VZ:
 		if !IsNativeArch(*y.Arch) {
@@ -72,8 +77,8 @@ func Validate(y LimaYAML, warn bool) error {
 			if err := validateFileObject(f.Kernel.File, fmt.Sprintf("images[%d].kernel", i)); err != nil {
 				return err
 			}
-			if f.Kernel.Arch != *y.Arch {
-				return fmt.Errorf("images[%d].kernel has unexpected architecture %q, must be %q", i, f.Kernel.Arch, *y.Arch)
+			if f.Kernel.Arch != f.Arch {
+				return fmt.Errorf("images[%d].kernel has unexpected architecture %q, must be %q", i, f.Kernel.Arch, f.Arch)
 			}
 		} else if f.Arch == RISCV64 {
 			return errors.New("riscv64 needs the kernel (e.g., \"uboot.elf\") to be specified")
@@ -85,8 +90,8 @@ func Validate(y LimaYAML, warn bool) error {
 			if f.Kernel == nil {
 				return errors.New("initrd requires the kernel to be specified")
 			}
-			if f.Initrd.Arch != *y.Arch {
-				return fmt.Errorf("images[%d].initrd has unexpected architecture %q, must be %q", i, f.Initrd.Arch, *y.Arch)
+			if f.Initrd.Arch != f.Arch {
+				return fmt.Errorf("images[%d].initrd has unexpected architecture %q, must be %q", i, f.Initrd.Arch, f.Arch)
 			}
 		}
 	}
@@ -158,7 +163,7 @@ func Validate(y LimaYAML, warn bool) error {
 	switch *y.MountType {
 	case REVSSHFS, NINEP, VIRTIOFS, WSLMount:
 	default:
-		return fmt.Errorf("field `mountType` must be %q or %q or %q, got %q", REVSSHFS, NINEP, VIRTIOFS, *y.MountType)
+		return fmt.Errorf("field `mountType` must be %q or %q or %q, or %q, got %q", REVSSHFS, NINEP, VIRTIOFS, WSLMount, *y.MountType)
 	}
 
 	if warn && runtime.GOOS != "linux" {

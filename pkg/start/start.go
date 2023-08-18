@@ -9,11 +9,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"text/template"
 	"time"
 
 	"github.com/lima-vm/lima/pkg/driver"
 	"github.com/lima-vm/lima/pkg/driverutil"
+	"github.com/lima-vm/lima/pkg/qemu"
+	"github.com/lima-vm/lima/pkg/qemu/entitlementutil"
 
 	"github.com/lima-vm/lima/pkg/downloader"
 	"github.com/lima-vm/lima/pkg/fileutils"
@@ -28,7 +31,7 @@ import (
 // to be running before timing out.
 const DefaultWatchHostAgentEventsTimeout = 10 * time.Minute
 
-// ensureNerdctlArchiveCache prefetches the nerdctl-full-VERSION-linux-GOARCH.tar.gz archive
+// ensureNerdctlArchiveCache prefetches the nerdctl-full-VERSION-GOOS-GOARCH.tar.gz archive
 // into the cache before launching the hostagent process, so that we can show the progress in tty.
 // https://github.com/lima-vm/lima/issues/326
 func ensureNerdctlArchiveCache(y *limayaml.LimaYAML) (string, error) {
@@ -100,6 +103,18 @@ func Start(ctx context.Context, inst *store.Instance) error {
 	}
 
 	haSockPath := filepath.Join(inst.Dir, filenames.HostAgentSock)
+
+	// Ask the user to sign the qemu binary with the "com.apple.security.hypervisor" if needed.
+	// Workaround for https://github.com/lima-vm/lima/issues/1742
+	if runtime.GOOS == "darwin" && inst.VMType == limayaml.QEMU {
+		qExe, _, err := qemu.Exe(inst.Arch)
+		if err != nil {
+			return fmt.Errorf("failed to find the QEMU binary for the architecture %q: %w", inst.Arch, err)
+		}
+		if accel := qemu.Accel(inst.Arch); accel == "hvf" {
+			entitlementutil.AskToSignIfNotSignedProperly(qExe)
+		}
+	}
 
 	prepared, err := Prepare(ctx, inst)
 	if err != nil {
@@ -296,4 +311,18 @@ func ShowMessage(inst *store.Instance) error {
 		fmt.Println(scanner.Text())
 	}
 	return scanner.Err()
+}
+
+func Register(ctx context.Context, inst *store.Instance) error {
+	y, err := inst.LoadYAML()
+	if err != nil {
+		return err
+	}
+
+	limaDriver := driverutil.CreateTargetDriverInstance(&driver.BaseDriver{
+		Instance: inst,
+		Yaml:     y,
+	})
+
+	return limaDriver.Register(ctx)
 }

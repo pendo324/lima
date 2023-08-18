@@ -16,7 +16,3 @@ func forwardTCP(ctx context.Context, sshConfig *ssh.SSHConfig, port int, local, 
 func getFreeVSockPort() (int, error) {
 	return 0, nil
 }
-
-func registerVSockPort(port int) error {
-	return nil
-}

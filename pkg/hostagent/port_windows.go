@@ -17,7 +17,3 @@ func forwardTCP(ctx context.Context, sshConfig *ssh.SSHConfig, port int, local, 
 func getFreeVSockPort() (int, error) {
 	return windows.GetRandomFreeVSockPort(0, 2147483647)
 }
-
-func registerVSockPort(port int) error {
-	return windows.AddVSockRegistryKey(port)
-}

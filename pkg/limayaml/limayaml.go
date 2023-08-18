@@ -8,6 +8,7 @@ import (
 
 type LimaYAML struct {
 	VMType             *VMType         `yaml:"vmType,omitempty" json:"vmType,omitempty"`
+	OS                 *OS             `yaml:"os,omitempty" json:"os,omitempty"`
 	Arch               *Arch           `yaml:"arch,omitempty" json:"arch,omitempty"`
 	Images             []Image         `yaml:"images" json:"images"` // REQUIRED
 	CPUType            map[Arch]string `yaml:"cpuType,omitempty" json:"cpuType,omitempty"`
@@ -40,11 +41,14 @@ type LimaYAML struct {
 	GuestAgent        GuestAgent     `yaml:"guestAgent,omitempty" json:"guestAgent,omitempty"`
 }
 
+type OS = string
 type Arch = string
 type MountType = string
 type VMType = string
 
 const (
+	LINUX OS = "Linux"
+
 	X8664   Arch = "x86_64"
 	AARCH64 Arch = "aarch64"
 	ARMV7L  Arch = "armv7l"
@@ -53,11 +57,11 @@ const (
 	REVSSHFS MountType = "reverse-sshfs"
 	NINEP    MountType = "9p"
 	VIRTIOFS MountType = "virtiofs"
-	WSLMount MountType = "wsl"
+	WSLMount MountType = "wsl2"
 
 	QEMU VMType = "qemu"
 	VZ   VMType = "vz"
-	WSL  VMType = "wsl"
+	WSL2 VMType = "wsl2"
 )
 
 type Rosetta struct {

@@ -45,9 +45,20 @@ func New(newTicker func() (<-chan time.Time, func()), iptablesIdle time.Duration
 		if err = auditClient.SetEnabled(true, libaudit.WaitForReply); err != nil {
 			return nil, err
 		}
-	}
+		auditStatus, err := auditClient.GetStatus()
+		if err != nil {
+			return nil, err
+		}
+		if auditStatus.Enabled == 0 {
+			if err = auditClient.SetEnabled(true, libaudit.WaitForReply); err != nil {
+				return nil, err
+			}
+		}
 
-	go a.setWorthCheckingIPTablesRoutine(auditClient, iptablesIdle)
+		go a.setWorthCheckingIPTablesRoutine(auditClient, iptablesIdle)
+	} else {
+		a.worthCheckingIPTables = true
+	}
 	go a.kubernetesServiceWatcher.Start()
 	go a.fixSystemTimeSkew()
 	return a, nil

@@ -22,12 +22,20 @@ type GuestAgentClient interface {
 	Events(context.Context, func(api.Event)) error
 }
 
+type Proto = string
+
+const (
+	UNIX  Proto = "unix"
+	VSOCK Proto = "vsock"
+	TCP   Proto = "tcp"
+)
+
 // NewGuestAgentClient creates a client.
 // remote is a path to the UNIX socket, without unix:// prefix or a remote hostname/IP address.
-func NewGuestAgentClient(remote string, proto limayaml.GuestAgentProto, instanceName string) (GuestAgentClient, error) {
+func NewGuestAgentClient(remote string, proto Proto, instanceName string) (GuestAgentClient, error) {
 	var hc *http.Client
 	switch proto {
-	case limayaml.GuestAgentTCPProto:
+	case TCP:
 		hc = &http.Client{
 			Transport: &http.Transport{
 				DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
@@ -36,13 +44,13 @@ func NewGuestAgentClient(remote string, proto limayaml.GuestAgentProto, instance
 				},
 			},
 		}
-	case limayaml.GuestAgentUNIXProto:
+	case UNIX:
 		hcSock, err := httpclientutil.NewHTTPClientWithSocketPath(remote)
 		if err != nil {
 			return nil, err
 		}
 		hc = hcSock
-	case limayaml.GuestAgentVSockProto:
+	case VSOCK:
 		_, p, err := net.SplitHostPort(remote)
 		if err != nil {
 			return nil, err

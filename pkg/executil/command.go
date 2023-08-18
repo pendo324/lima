@@ -1,6 +1,7 @@
 package executil
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os/exec"
@@ -37,16 +38,14 @@ func RunUTF16leCommand(args []string, opts ...Opt) (string, error) {
 		cmd = exec.Command(args[0], args[1:]...)
 	}
 
-	out, err := cmd.StdoutPipe()
-	if err != nil {
-		return "", err
+	outString := ""
+	out, err := cmd.CombinedOutput()
+	if out != nil {
+		s, err := ioutilx.FromUTF16leToString(bytes.NewReader(out))
+		if err != nil {
+			return "", fmt.Errorf("failed to convert output from UTF16 when running command %v, err: %w", args, err)
+		}
+		outString = s
 	}
-	if err := cmd.Start(); err != nil {
-		return "", err
-	}
-	outString, err := ioutilx.FromUTF16leToString(out)
-	if err != nil {
-		return "", fmt.Errorf("failed to convert output from UTF16 when running command %v, err: %w", args, err)
-	}
-	return outString, nil
+	return outString, err
 }
