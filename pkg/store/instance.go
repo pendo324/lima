@@ -25,7 +25,6 @@ import (
 	"github.com/lima-vm/lima/pkg/store/dirnames"
 	"github.com/lima-vm/lima/pkg/store/filenames"
 	"github.com/lima-vm/lima/pkg/textutil"
-	"github.com/sirupsen/logrus"
 )
 
 type Status = string

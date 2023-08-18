@@ -13,7 +13,6 @@ import (
 
 	"github.com/lima-vm/lima/pkg/guestagent/api"
 	"github.com/lima-vm/lima/pkg/httpclientutil"
-	"github.com/lima-vm/lima/pkg/limayaml"
 )
 
 type GuestAgentClient interface {
