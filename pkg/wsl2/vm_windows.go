@@ -35,13 +35,12 @@ func startVM(ctx context.Context, distroName string) error {
 // initVM calls WSL to import a new VM specifically for Lima.
 func initVM(ctx context.Context, instanceDir, distroName string) error {
 	rootFSPath := path.Join(instanceDir, filenames.BaseDisk)
-	diffDiskPath := path.Join(instanceDir, filenames.WslDiskName)
-	logrus.Infof("Importing distro from %q to %q", rootFSPath, diffDiskPath)
+	logrus.Infof("Importing distro from %q to %q", rootFSPath, instanceDir)
 	_, err := executil.RunUTF16leCommand([]string{
 		"wsl.exe",
 		"--import",
 		distroName,
-		diffDiskPath,
+		instanceDir,
 		rootFSPath,
 	}, executil.WithContext(&ctx))
 	if err != nil {
