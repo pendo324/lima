@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"text/tabwriter"
 
 	"github.com/docker/go-units"
-	"github.com/lima-vm/lima/pkg/qemu"
+	"github.com/lima-vm/lima/pkg/disk"
 	"github.com/lima-vm/lima/pkg/store"
+	"github.com/lima-vm/lima/pkg/store/filenames"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -96,7 +98,8 @@ func diskCreateAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := qemu.CreateDataDisk(diskDir, format, int(diskSize)); err != nil {
+	dataDisk := filepath.Join(diskDir, filenames.DataDisk)
+	if err := disk.CreateDisk(dataDisk, format, int(diskSize)); err != nil {
 		return fmt.Errorf("Failed to create %s disk in %q", format, diskDir)
 	}
 

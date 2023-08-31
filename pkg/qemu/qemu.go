@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lima-vm/lima/pkg/disk"
 	"github.com/lima-vm/lima/pkg/networks/usernet"
 
 	"github.com/coreos/go-semver/semver"
@@ -121,17 +122,7 @@ func EnsureDisk(cfg Config) error {
 
 func CreateDataDisk(dir, format string, size int) error {
 	dataDisk := filepath.Join(dir, filenames.DataDisk)
-	if _, err := os.Stat(dataDisk); err == nil || !errors.Is(err, fs.ErrNotExist) {
-		// datadisk already exists
-		return err
-	}
-
-	args := []string{"create", "-f", format, dataDisk, strconv.Itoa(size)}
-	cmd := exec.Command("qemu-img", args...)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to run %v: %q: %w", cmd.Args, string(out), err)
-	}
-	return nil
+	return disk.CreateDisk(dataDisk, format, size)
 }
 
 func newQmpClient(cfg Config) (*qmp.SocketMonitor, error) {
