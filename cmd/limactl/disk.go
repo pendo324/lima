@@ -7,6 +7,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/docker/go-units"
@@ -15,6 +17,7 @@ import (
 	"github.com/lima-vm/lima/pkg/store/filenames"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
 )
 
 func newDiskCommand() *cobra.Command {
@@ -74,10 +77,15 @@ func diskCreateAction(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch format {
-	case "qcow2", "raw":
-	default:
-		return fmt.Errorf(`disk format %q not supported, use "qcow2" or "raw" instead`, format)
+	var supportedFormats []string
+	if runtime.GOOS == "windows" {
+		supportedFormats = []string{"vhdx"}
+	} else {
+		supportedFormats = []string{"qcow2", "raw"}
+	}
+
+	if !slices.Contains(supportedFormats, format) {
+		return fmt.Errorf(`disk format %q not supported, use one of: [%s] instead`, format, strings.Join(supportedFormats, ", "))
 	}
 
 	// only exactly one arg is allowed
