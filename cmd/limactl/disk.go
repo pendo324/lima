@@ -108,7 +108,7 @@ func diskCreateAction(cmd *cobra.Command, args []string) error {
 
 	dataDisk := filepath.Join(diskDir, filenames.DataDisk)
 	if err := disk.CreateDisk(dataDisk, format, int(diskSize)); err != nil {
-		return fmt.Errorf("Failed to create %s disk in %q", format, diskDir)
+		return fmt.Errorf("Failed to create %s disk in %q: %w", format, diskDir, err)
 	}
 
 	return nil
