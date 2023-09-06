@@ -49,6 +49,7 @@ func (l *LimaWslDriver) Validate() error {
 		"DNS",
 		"HostResolver",
 		"PropagateProxyEnv",
+		"AdditionalDisks",
 	); len(unknown) > 0 {
 		logrus.Warnf("Ignoring: vmType %s: %+v", *l.Yaml.VMType, unknown)
 	}
@@ -119,6 +120,10 @@ func (l *LimaWslDriver) Start(ctx context.Context) (chan error, error) {
 	errCh := make(chan error)
 
 	if err := startVM(ctx, distroName); err != nil {
+		return nil, err
+	}
+
+	if err := attachAdditionalDisks(driver.BaseDriver.Yaml.AdditionalDisks, driver.BaseDriver.Instance.Dir); {
 		return nil, err
 	}
 

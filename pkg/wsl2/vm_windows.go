@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/lima-vm/lima/pkg/executil"
+	"github.com/lima-vm/lima/pkg/limayaml"
 	"github.com/lima-vm/lima/pkg/store"
 	"github.com/lima-vm/lima/pkg/store/filenames"
 	"github.com/lima-vm/lima/pkg/textutil"
@@ -125,6 +126,37 @@ func keepAlive(ctx context.Context, distroName string, errCh *chan error) {
 				"error running wsl keepAlive command: %w", err)
 		}
 	}()
+}
+
+func attachAdditionalDisks(add []limayaml.Disk, instanceDir string) error {
+	for _, d := range add {
+		diskName := d.Name
+		disk, err := store.InspectDisk(diskName)
+		if err != nil {
+			return fmt.Errorf("failed to run load disk %q: %q", diskName, err)
+		}
+
+		if disk.Instance != "" {
+			return fmt.Errorf("failed to run attach disk %q, in use by instance %q", diskName, disk.Instance)
+		}
+		logrus.Infof("Mounting disk %q on %q", diskName, disk.MountPoint)
+		err = disk.Lock(instanceDir)
+		if err != nil {
+			return fmt.Errorf("failed to run lock disk %q: %q", diskName, err)
+		}
+		extraDiskPath := filepath.Join(disk.Dir, filenames.DataDisk)
+
+		if _, err := executil.RunUTF16leCommand([]string{
+			"wsl",
+			"--mount",
+			"--vhd",
+			extraDiskPath,
+			"--bare",
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // unregisterVM calls WSL to unregister a VM.
