@@ -123,7 +123,7 @@ func (l *LimaWslDriver) Start(ctx context.Context) (chan error, error) {
 		return nil, err
 	}
 
-	if err := attachAdditionalDisks(driver.BaseDriver.Yaml.AdditionalDisks, driver.BaseDriver.Instance.Dir); {
+	if err := attachAdditionalDisks(l.BaseDriver.Instance.AdditionalDisks, l.BaseDriver.Instance.Dir); err != nil {
 		return nil, err
 	}
 
