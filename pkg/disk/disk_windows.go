@@ -8,8 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-
-	"github.com/Microsoft/go-winio/vhd"
+	"os/exec"
 )
 
 func CreateDisk(path, format string, size int) error {
@@ -22,5 +21,20 @@ func CreateDisk(path, format string, size int) error {
 		return fmt.Errorf("format %q is not supported on windows, try 'vhdx'", format)
 	}
 
-	return vhd.CreateVhdx(path, uint32(size), 1)
+	// size needs to be in megabytes
+	script := fmt.Sprintf(`@"
+create vdisk file="%s" type="expandable" maximum=%d
+"@ | diskpart /s`, path, size/1024)
+
+	_, err := exec.Command("powershell.exe",
+		"-nologo",
+		"-noprofile",
+		script,
+	).CombinedOutput()
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
