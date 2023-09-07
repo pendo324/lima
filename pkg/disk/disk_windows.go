@@ -28,8 +28,8 @@ func CreateDisk(path, format string, size int) error {
 	// size must be in MiB
 	sizeMiB := size / 1048576
 
-	if sizeMiB >= 3 {
-		return fmt.Errorf("vhdx disks must be >= 3MiB on windows, got %q", sizeMiB)
+	if sizeMiB < 3 {
+		return fmt.Errorf("vhdx disks must be >= 3MiB on windows, got '%d'", sizeMiB)
 	}
 
 	// diskpart seems to use the filename to determine vhd vs vhdx
