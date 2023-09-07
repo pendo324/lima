@@ -51,7 +51,7 @@ detail vdisk
 	}
 
 	size := sizeNum + sizeUnit
-	sizeB, err := units.FromHumanSize(size)
+	sizeB, err := units.RAMInBytes(size)
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse size %q into bytes: %w", size, err)
 	}
