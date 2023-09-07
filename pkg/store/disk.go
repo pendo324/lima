@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/lima-vm/lima/pkg/store/filenames"
 )
@@ -31,6 +32,9 @@ func InspectDisk(diskName string) (*Disk, error) {
 
 	disk.Dir = diskDir
 	dataDisk := filepath.Join(diskDir, filenames.DataDisk)
+	if runtime.GOOS == "windows" {
+		dataDisk = filepath.Join(diskDir, filenames.DataDiskWindows)
+	}
 	if _, err := os.Stat(dataDisk); err != nil {
 		return nil, err
 	}

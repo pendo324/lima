@@ -61,8 +61,9 @@ const (
 // Filenames used under a disk directory
 
 const (
-	DataDisk = "datadisk"
-	InUseBy  = "in_use_by"
+	DataDisk        = "datadisk"
+	DataDiskWindows = "datadisk.vhdx"
+	InUseBy         = "in_use_by"
 )
 
 // LongestSock is the longest socket name.

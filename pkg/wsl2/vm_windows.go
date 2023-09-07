@@ -144,7 +144,7 @@ func attachAdditionalDisks(add []limayaml.Disk, instanceDir string) error {
 		if err != nil {
 			return fmt.Errorf("failed to run lock disk %q: %q", diskName, err)
 		}
-		extraDiskPath := filepath.Join(disk.Dir, filenames.DataDisk)
+		extraDiskPath := filepath.Join(disk.Dir, filenames.DataDiskWindows)
 
 		if _, err := executil.RunUTF16leCommand([]string{
 			"wsl",

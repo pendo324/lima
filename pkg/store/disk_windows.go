@@ -11,12 +11,15 @@ import (
 	"github.com/docker/go-units"
 )
 
+// inspectDiskSize parses the output of diskpart to get size of disk fName.
+//
+// Disks must have a file extension for diskpart to work.
 // TODO: Add proper parsing support to https://github.com/lima-vm/go-qcow2reader/blob/master/image/vhdx/vhdx.go
 func inspectDiskSize(fName string) (int64, error) {
-	script := `@"
-select vdisk file=C:\Users\Administrator\Code\lima\test2.vhdx
+	script := fmt.Sprintf(`@"
+select vdisk file=%s
 detail vdisk
-"@ | diskpart`
+"@ | diskpart`, fName)
 
 	out, err := exec.Command("powershell.exe",
 		"-nologo",
