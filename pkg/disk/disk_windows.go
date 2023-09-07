@@ -21,10 +21,14 @@ func CreateDisk(path, format string, size int) error {
 		return fmt.Errorf("format %q is not supported on windows, try 'vhdx'", format)
 	}
 
-	// size needs to be in megabytes
+	// diskpart seems to use the filename to determine vhd vs vhdx
+	// no extension seems to default to vhd
+	pathExt := path + ".vhdx"
+
+	// size needs to be in MiB
 	script := fmt.Sprintf(`@"
 create vdisk file="%s" type="expandable" maximum=%d
-"@ | diskpart /s`, path, size/1024)
+"@ | diskpart`, pathExt, size/1048576)
 
 	_, err := exec.Command("powershell.exe",
 		"-nologo",
@@ -36,5 +40,5 @@ create vdisk file="%s" type="expandable" maximum=%d
 		return err
 	}
 
-	return nil
+	return os.Rename(pathExt, path)
 }
